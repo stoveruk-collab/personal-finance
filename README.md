@@ -112,6 +112,7 @@ The current hosted shape for this app is:
 - `Google Cloud SQL for PostgreSQL` for the live database
 - `Google Secret Manager` for app secrets
 - `Google OAuth` for authentication
+- `Cloud SQL automated backups` for nightly database protection
 
 Primary deployment helper:
 
@@ -120,6 +121,7 @@ Primary deployment helper:
 Deployment guide:
 
 - `docs/gcp-cloudrun.md`
+- `docs/runbook.md`
 
 Container build:
 

@@ -83,6 +83,42 @@ In Cloud Run, the app builds its database connection from:
 - `DB_NAME`
 - `CLOUDSQL_CONNECTION_NAME`
 
+## Nightly Backups
+
+Cloud SQL automated backups are the primary at-rest backup mechanism for the deployed app.
+
+Recommended baseline:
+
+- automated backups: `enabled`
+- start time: `03:00`
+- retained backups: `7`
+- region: same as the instance region
+
+Current production expectation:
+
+- instance: `personal-finance-db`
+- region: `europe-west2`
+- nightly backup window: `03:00`
+- retained backups: `7`
+
+Verify with:
+
+```bash
+gcloud sql instances describe personal-finance-db \
+  --project "$PROJECT_ID" \
+  --format='json(settings.backupConfiguration)'
+```
+
+If you need to change the schedule or retention:
+
+```bash
+gcloud sql instances patch personal-finance-db \
+  --project "$PROJECT_ID" \
+  --backup-start-time=03:00 \
+  --retained-backups-count=7 \
+  --quiet
+```
+
 ## Google OAuth
 
 Create a Google OAuth web client and add both local and hosted callbacks.
