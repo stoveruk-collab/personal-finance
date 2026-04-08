@@ -87,10 +87,6 @@ def seed_budget_settings(db: Session) -> None:
                 )
             )
             changed = True
-            continue
-        if budget.monthly_budget != rule.monthly_budget:
-            budget.monthly_budget = rule.monthly_budget
-            changed = True
 
     if changed:
         db.commit()
