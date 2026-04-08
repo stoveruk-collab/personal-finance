@@ -35,6 +35,12 @@
     <div>
       <h3>{{ current_month_label }} Budget Watch</h3>
       <p class="muted">Actual spend versus monthly budget for every category with current-month activity or budget.</p>
+      <p class="watch-summary-line">
+        <strong>{{ format_gbp(current_report.total_expenses) }}</strong>
+        actual this month against
+        <strong>{{ format_gbp(current_report.total_budget) }}</strong>
+        total budget.
+      </p>
     </div>
   </div>
 

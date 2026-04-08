@@ -332,6 +332,11 @@ body {
   flex-wrap: wrap;
   margin-bottom: 18px;
 }
+.watch-summary-line {
+  margin: 10px 0 0;
+  color: var(--ink);
+  font-size: 1rem;
+}
 .legend-item {
   display: inline-flex;
   align-items: center;
