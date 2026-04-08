@@ -12,7 +12,7 @@ The project is designed for people who want:
 ## What It Does
 
 - Upload `.qif`, `.ofx`, and `.qfx` transaction files
-- Detect accounts from file content where possible
+- Detect account type from file content where possible
 - De-duplicate transactions on import
 - Apply editable mapping rules stored in the database
 - Fall back to the OpenAI API when no mapping rule matches

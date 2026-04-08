@@ -46,11 +46,11 @@ def infer_account_name(path: Path, file_bytes: bytes | None = None) -> str:
     if file_bytes:
         text = file_bytes[:4096].decode("utf-8", errors="ignore").lower()
         if path.suffix.lower() == ".qif":
-            return "Amex Credit"
+            return "Primary Card"
         if "<creditcardmsgsrsv1>" in text or "<ccstmttrnrs>" in text or "<ccacctfrom>" in text:
-            return "HSBC Credit"
+            return "Credit Account"
         if "<bankmsgsrsv1>" in text or "<stmttrnrs>" in text or "<bankacctfrom>" in text:
-            return "HSBC Current"
+            return "Current Account"
 
     return "Unassigned Account"
 
