@@ -106,15 +106,28 @@ The repository includes safe sample files in `config/` that you can replace with
 
 ## Deployment
 
-The repo includes deployment helpers for container-based hosting, including Cloud Run and legacy Lightsail scripts.
+The current hosted shape for this app is:
 
-Cloud Run helper:
+- `Google Cloud Run` for the web application
+- `Google Cloud SQL for PostgreSQL` for the live database
+- `Google Secret Manager` for app secrets
+- `Google OAuth` for authentication
+
+Primary deployment helper:
 
 - `scripts/gcp-cloudrun-deploy.sh`
+
+Deployment guide:
+
+- `docs/gcp-cloudrun.md`
 
 Container build:
 
 - `Dockerfile`
+
+Legacy AWS notes:
+
+- `docs/aws-lightsail.md`
 
 ## Privacy
 
