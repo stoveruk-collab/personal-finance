@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or "Personal Finance Ledger" }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div>
+        <h1>Personal Finance</h1>
+      </div>
+      <nav>
+        <a href="/">Dashboard</a>
+        <a href="/reports">Reports</a>
+        <a href="/budgets">Budgets</a>
+        <a href="/imports/new">Import</a>
+        <a href="/ledger">Ledger</a>
+        <a href="/categories">Categories</a>
+        <a href="/mappings">Mappings</a>
+        <a href="/years/close">Year Close</a>
+      </nav>
+      <div class="sidebar-foot">
+        {% if user %}
+          <div>{{ user.name }}</div>
+          <a href="/logout">Sign out</a>
+        {% else %}
+          <a href="/login">Sign in with Google</a>
+        {% endif %}
+      </div>
+    </aside>
+    <main class="main">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

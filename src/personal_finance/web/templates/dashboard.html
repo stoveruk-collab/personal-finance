@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h2>Finance Control Room</h2>
+  <p>Upload downloaded files, review categorisation, browse the ledger, and generate month-end reports in the same style as your trusted HTML statements.</p>
+</section>
+
+{% if auth_warning %}
+<section class="panel narrow">
+  <h3>Authentication Setup Needed</h3>
+  <p class="muted">{{ auth_warning }}</p>
+</section>
+{% endif %}
+
+<section class="stats-grid">
+  <article class="stat-card"><span class="label">Accounts</span><span class="value">{{ account_count }}</span></article>
+  <article class="stat-card"><span class="label">Transactions Loaded</span><span class="value">{{ transaction_count }}</span></article>
+  <article class="stat-card"><span class="label">Open Years</span><span class="value">{{ open_years|length }}</span></article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h3>Latest Transactions</h3>
+    <div class="action-row">
+      <a class="button secondary" href="/reports">Open Reports</a>
+      <a class="button" href="/imports/new">Upload Files</a>
+    </div>
+  </div>
+  <table class="table">
+    <thead><tr><th>Date</th><th>Account</th><th>Payee</th><th>Category</th><th class="amount">Amount</th></tr></thead>
+    <tbody>
+      {% for tx in latest_transactions %}
+      <tr>
+        <td>{{ tx.posted_at.strftime("%Y-%m-%d") }}</td>
+        <td>{{ tx.account.name if tx.account else tx.source_account_label }}</td>
+        <td>{{ tx.payee }}</td>
+        <td>{{ tx.category.name if tx.category else "Uncategorised" }}</td>
+        <td class="amount">{{ format_gbp(tx.amount) }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">No transactions loaded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel narrow">
+  <h2>Categories</h2>
+  <form action="/categories" method="post" class="inline-form">
+    <input type="text" name="name" placeholder="New category name" required>
+    <button class="button" type="submit">Add Category</button>
+  </form>
+</section>
+<section class="panel">
+  <table class="table">
+    <thead><tr><th>Name</th><th>Active</th><th></th></tr></thead>
+    <tbody>
+      {% for category in categories %}
+      <tr>
+        <td colspan="3">
+          <form action="/categories/{{ category.id }}" method="post" class="inline-form">
+            <input type="text" name="name" value="{{ category.name }}" required>
+            <label><input type="checkbox" name="is_active" {% if category.is_active %}checked{% endif %}> Active</label>
+            <button class="button secondary" type="submit">Save</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+

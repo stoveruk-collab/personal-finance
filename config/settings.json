@@ -1,0 +1,19 @@
+{
+  "finance_root": "./sample-finance-data",
+  "mapping_file": "./config/category_mapping.csv",
+  "budget_file": "./config/monthly_budget.csv",
+  "accounts": [
+    {
+      "name": "Primary Card",
+      "patterns": ["*card*.qif", "*card*.ofx", "*card*.qfx"]
+    },
+    {
+      "name": "Current Account",
+      "patterns": ["*current*.ofx", "*current*.qfx", "*checking*.ofx"]
+    },
+    {
+      "name": "Credit Account",
+      "patterns": ["*credit*.ofx", "*credit*.qfx"]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel narrow">
+  <h2>Upload Transaction Files</h2>
+  <p>Upload manually downloaded `.qif`, `.ofx`, or `.qfx` files. The app will deduplicate, apply mapping rules, and ask OpenAI for a best guess when a mapping is missing.</p>
+  <form action="/imports/preview" method="post" enctype="multipart/form-data" class="stack">
+    <input type="file" name="files" accept=".qif,.ofx,.qfx" multiple required>
+    <button class="button" type="submit">Preview Import</button>
+  </form>
+</section>
+{% endblock %}
+

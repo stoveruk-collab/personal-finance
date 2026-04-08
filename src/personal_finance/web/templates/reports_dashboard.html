@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero report-hero">
+  <h2>Reporting Dashboard</h2>
+  <p>Switch between month-end P&amp;L detail and annual budget tracking from one control surface.</p>
+  <form action="/reports" method="get" class="report-selector">
+    <div class="selector-group">
+      <label for="period">View</label>
+      <select id="period" name="period">
+        <option value="month" {% if period == "month" %}selected{% endif %}>Month</option>
+        <option value="year" {% if period == "year" %}selected{% endif %}>Year</option>
+      </select>
+    </div>
+    <div class="selector-group">
+      <label for="year">Year</label>
+      <select id="year" name="year">
+        {% for item in year_choices %}
+        <option value="{{ item }}" {% if item == selected_year %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="selector-group">
+      <label for="month">Month</label>
+      <select id="month" name="month">
+        {% for item in month_choices %}
+        <option value="{{ item.month }}" {% if item.year == selected_year and item.month == selected_month %}selected{% endif %}>{{ item.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="button" type="submit">Refresh Report</button>
+    <a class="button secondary" href="/budgets">Edit Budgets</a>
+  </form>
+</section>
+
+{% if period == "month" %}
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h3>{{ report.title_month }} {{ report.year }} P&amp;L</h3>
+      <p class="muted">Categories expand to reveal transaction detail across all imported accounts.</p>
+    </div>
+  </div>
+  <div class="stats-grid report-stats">
+    <article class="stat-card solid"><span class="label">Income</span><span class="value">{{ format_gbp(report.total_income) }}</span></article>
+    <article class="stat-card solid"><span class="label">Expenses</span><span class="value">{{ format_gbp(report.total_expenses) }}</span></article>
+    <article class="stat-card solid"><span class="label">Budget</span><span class="value">{{ format_gbp(report.total_budget) }}</span></article>
+    <article class="stat-card solid"><span class="label">Variance</span><span class="value">{{ format_gbp(report.budget_variance) }}</span></article>
+    <article class="stat-card solid"><span class="label">Net Surplus</span><span class="value">{{ format_gbp(report.net_surplus) }}</span></article>
+  </div>
+</section>
+
+<section class="panel">
+  <h3>Monthly Comparison To Budget</h3>
+  <table class="table comparison-table">
+    <colgroup>
+      <col class="comparison-category-col">
+      <col class="comparison-value-col">
+      <col class="comparison-value-col">
+      <col class="comparison-value-col">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th class="amount"><span class="comparison-head">Actual</span></th>
+        <th class="amount"><span class="comparison-head">Budget</span></th>
+        <th class="amount"><span class="comparison-head">Variance</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for section in report.expense_sections %}
+      <tr>
+        <td>{{ section.category }}</td>
+        <td class="amount">{{ format_gbp(section.amount) }}</td>
+        <td class="amount">{{ format_gbp(section.budget) }}</td>
+        <td class="amount">{{ format_gbp(section.variance) }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="total-row">
+        <td>Total Expenses</td>
+        <td class="amount">{{ format_gbp(report.total_expenses) }}</td>
+        <td class="amount">{{ format_gbp(report.total_budget) }}</td>
+        <td class="amount">{{ format_gbp(report.budget_variance) }}</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h3>Statement Summary</h3>
+  <table class="statement">
+    <tbody>
+      <tr class="section"><td>Income</td><td></td></tr>
+      {% for section in report.income_sections %}
+      <tr><td>{{ section.category }}</td><td class="amount">{{ format_gbp(section.amount) }}</td></tr>
+      {% endfor %}
+      <tr class="total"><td>Total Income</td><td class="amount">{{ format_gbp(report.total_income) }}</td></tr>
+      <tr class="section"><td>Expenses</td><td></td></tr>
+      {% for section in report.expense_sections %}
+      <tr><td>{{ section.category }}</td><td class="amount">{{ format_gbp(section.amount) }}</td></tr>
+      {% endfor %}
+      <tr class="total"><td>Total Expenses</td><td class="amount">{{ format_gbp(report.total_expenses) }}</td></tr>
+      <tr><td>Total Budget</td><td class="amount">{{ format_gbp(report.total_budget) }}</td></tr>
+      <tr><td>Budget Variance</td><td class="amount">{{ format_gbp(report.budget_variance) }}</td></tr>
+      <tr class="net"><td>Net Surplus</td><td class="amount">{{ format_gbp(report.net_surplus) }}</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h3>Income Detail</h3>
+  {% for section in report.income_sections %}
+  <details class="category-block" {% if loop.first %}open{% endif %}>
+    <summary><span>{{ section.category }}</span><span>{{ format_gbp(section.amount) }}</span></summary>
+    <table class="table">
+      <thead><tr><th>Date</th><th>Account</th><th>Payee</th><th>Memo</th><th class="amount">Amount</th></tr></thead>
+      <tbody>
+        {% for tx in section.transactions %}
+        <tr>
+          <td>{{ tx.posted_at.strftime("%d %b %Y") }}</td>
+          <td>{{ tx.account.name }}</td>
+          <td>{{ tx.payee }}</td>
+          <td>{{ tx.memo or " " }}</td>
+          <td class="amount">{{ format_gbp(tx.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% else %}
+  <p class="muted">No income posted in this month.</p>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <h3>Expense Detail</h3>
+  {% for section in report.expense_sections %}
+  <details class="category-block" {% if loop.first %}open{% endif %}>
+    <summary>
+      <span>{{ section.category }}</span>
+      <span class="category-metrics">
+        <span>{{ format_gbp(section.amount) }}</span>
+        <span class="muted-small">Budget {{ format_gbp(section.budget) }} | Variance {{ format_gbp(section.variance) }}</span>
+      </span>
+    </summary>
+    <table class="table">
+      <thead><tr><th>Date</th><th>Account</th><th>Payee</th><th>Memo</th><th class="amount">Amount</th></tr></thead>
+      <tbody>
+        {% for tx in section.transactions %}
+        <tr>
+          <td>{{ tx.posted_at.strftime("%d %b %Y") }}</td>
+          <td>{{ tx.account.name }}</td>
+          <td>{{ tx.payee }}</td>
+          <td>{{ tx.memo or " " }}</td>
+          <td class="amount">{{ format_gbp(-tx.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% else %}
+  <p class="muted">No expense activity posted in this month.</p>
+  {% endfor %}
+</section>
+{% else %}
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h3>{{ report.year }} Annual Budget Review</h3>
+      <p class="muted">Each month is compared directly against the current monthly budget totals.</p>
+    </div>
+  </div>
+  <div class="stats-grid report-stats">
+    <article class="stat-card solid"><span class="label">Income</span><span class="value">{{ format_gbp(report.total_income) }}</span></article>
+    <article class="stat-card solid"><span class="label">Expenses</span><span class="value">{{ format_gbp(report.total_expenses) }}</span></article>
+    <article class="stat-card solid"><span class="label">Budget</span><span class="value">{{ format_gbp(report.total_budget) }}</span></article>
+    <article class="stat-card solid"><span class="label">Variance</span><span class="value">{{ format_gbp(report.budget_variance) }}</span></article>
+    <article class="stat-card solid"><span class="label">Net Surplus</span><span class="value">{{ format_gbp(report.net_surplus) }}</span></article>
+  </div>
+</section>
+
+<section class="panel">
+  <h3>Monthly Comparison</h3>
+  <table class="table">
+    <thead>
+      <tr><th>Month</th><th class="amount">Income</th><th class="amount">Actual Spend</th><th class="amount">Budget</th><th class="amount">Variance</th><th class="amount">Net</th></tr>
+    </thead>
+    <tbody>
+      {% for month in report.months %}
+      <tr>
+        <td>{{ month.label }}</td>
+        <td class="amount">{{ format_gbp(month.income) }}</td>
+        <td class="amount">{{ format_gbp(month.expenses) }}</td>
+        <td class="amount">{{ format_gbp(month.budget) }}</td>
+        <td class="amount">{{ format_gbp(month.variance) }}</td>
+        <td class="amount">{{ format_gbp(month.net) }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="total-row">
+        <td>Year Total</td>
+        <td class="amount">{{ format_gbp(report.total_income) }}</td>
+        <td class="amount">{{ format_gbp(report.total_expenses) }}</td>
+        <td class="amount">{{ format_gbp(report.total_budget) }}</td>
+        <td class="amount">{{ format_gbp(report.budget_variance) }}</td>
+        <td class="amount">{{ format_gbp(report.net_surplus) }}</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h3>Category Budget Matrix</h3>
+  <div class="table-scroll">
+    <table class="table budget-matrix">
+      <thead>
+        <tr>
+          <th>Category</th>
+          {% for month in report.months %}
+          <th class="amount">{{ month.label }} Actual</th>
+          <th class="amount">{{ month.label }} Variance</th>
+          {% endfor %}
+          <th class="amount">Actual</th>
+          <th class="amount">Budget</th>
+          <th class="amount">Variance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in report.category_rows %}
+        <tr>
+          <td>{{ row.category }}</td>
+          {% for cell in row.months %}
+          <td class="amount">{{ format_gbp(cell.actual) }}</td>
+          <td class="amount">{{ format_gbp(cell.variance) }}</td>
+          {% endfor %}
+          <td class="amount">{{ format_gbp(row.total_actual) }}</td>
+          <td class="amount">{{ format_gbp(row.annual_budget) }}</td>
+          <td class="amount">{{ format_gbp(row.annual_variance) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

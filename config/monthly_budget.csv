@@ -1,0 +1,11 @@
+category,monthly_budget_gbp,checkpoint_mode
+Rent,2500,linear
+Groceries & Supplies,800,linear
+Dining & Food Delivery,350,linear
+Public Transit,250,linear
+Utilities & Taxes,500,linear
+Internet Subscriptions,150,linear
+Discretionary Retail,400,linear
+Health Care,100,linear
+Pets,100,linear
+Miscellaneous,200,linear

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "personal-finance"
+version = "0.1.0"
+description = "Local-first tools for family finance reporting and budget checkpoints."
+requires-python = ">=3.9"
+dependencies = [
+    "authlib>=1.3.1",
+    "fastapi>=0.115.0",
+    "httpx>=0.27.2",
+    "itsdangerous>=2.2.0",
+    "jinja2>=3.1.4",
+    "psycopg[binary]>=3.2.3",
+    "python-multipart>=0.0.9",
+    "sqlalchemy>=2.0.36",
+    "uvicorn>=0.32.0",
+]
+
+[project.scripts]
+personal-finance = "personal_finance.cli:main"
+personal-finance-web = "personal_finance.web.app:run"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,40 @@
+{
+  "providers": {
+    "amex": {
+      "label": "Amex Credit",
+      "start_url": "https://global.americanexpress.com/",
+      "download_filename_prefix": "AMEX_Credit",
+      "storage_state": "config/storage/amex.json",
+      "selectors": {
+        "post_login_ready": "",
+        "date_from_input": "",
+        "date_to_input": "",
+        "download_trigger": ""
+      }
+    },
+    "hsbc-current": {
+      "label": "HSBC Current",
+      "start_url": "https://www.hsbc.co.uk/",
+      "download_filename_prefix": "HSBC_Current",
+      "storage_state": "config/storage/hsbc-current.json",
+      "selectors": {
+        "post_login_ready": "",
+        "date_from_input": "",
+        "date_to_input": "",
+        "download_trigger": ""
+      }
+    },
+    "hsbc-credit": {
+      "label": "HSBC Credit",
+      "start_url": "https://www.hsbc.co.uk/",
+      "download_filename_prefix": "HSBC_Credit",
+      "storage_state": "config/storage/hsbc-credit.json",
+      "selectors": {
+        "post_login_ready": "",
+        "date_from_input": "",
+        "date_to_input": "",
+        "download_trigger": ""
+      }
+    }
+  }
+}

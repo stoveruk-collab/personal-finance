@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel narrow">
+  <h2>Add Mapping Rule</h2>
+  <form action="/mappings" method="post" class="inline-form">
+    <input type="number" name="priority" value="1000" min="1" required>
+    <select name="match_type">
+      <option value="contains">contains</option>
+      <option value="exact">exact</option>
+      <option value="starts">starts</option>
+      <option value="ends">ends</option>
+      <option value="regex">regex</option>
+    </select>
+    <input type="text" name="pattern" placeholder="Pattern" required>
+    <select name="category_id" required>
+      {% for category in categories %}
+        <option value="{{ category.id }}">{{ category.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="button" type="submit">Add Rule</button>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Mapping Rules</h2>
+  <table class="table">
+    <thead><tr><th>Priority</th><th>Match Type</th><th>Pattern</th><th>Category</th><th></th></tr></thead>
+    <tbody>
+      {% for rule in rules %}
+      <tr>
+        <td colspan="5">
+          <form action="/mappings/{{ rule.id }}" method="post" class="inline-form">
+            <input type="number" name="priority" value="{{ rule.priority }}" min="1" required>
+            <select name="match_type">
+              {% for choice in ["contains", "exact", "starts", "ends", "regex"] %}
+                <option value="{{ choice }}" {% if rule.match_type == choice %}selected{% endif %}>{{ choice }}</option>
+              {% endfor %}
+            </select>
+            <input type="text" name="pattern" value="{{ rule.pattern }}" required>
+            <select name="category_id" required>
+              {% for category in categories %}
+                <option value="{{ category.id }}" {% if category.id == rule.category_id %}selected{% endif %}>{{ category.name }}</option>
+              {% endfor %}
+            </select>
+            <button class="button secondary" type="submit">Save</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

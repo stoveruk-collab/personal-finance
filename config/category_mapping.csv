@@ -1,0 +1,14 @@
+Priority,MatchType,Pattern,Category
+1000,exact,PAYROLL ACME LTD,Salary
+1000,exact,INTERNAL TRANSFER,Transfer
+500,contains,UBER,Public Transit
+500,contains,TRAINLINE,Public Transit
+500,contains,TESCO,Groceries & Supplies
+500,contains,WHOLE FOODS,Groceries & Supplies
+500,contains,STARBUCKS,Dining & Food Delivery
+500,contains,DELIVEROO,Dining & Food Delivery
+500,contains,NETFLIX,Internet Subscriptions
+500,contains,SPOTIFY,Internet Subscriptions
+500,contains,AWS,Internet Subscriptions
+500,contains,HMRC,Utilities & Taxes
+100,contains,AMAZON,Discretionary Retail

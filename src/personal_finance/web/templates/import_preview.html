@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Import Preview</h2>
+      <p class="muted">{{ duplicate_count }} duplicate transactions were skipped before preview.</p>
+    </div>
+  </div>
+  <form action="/imports/commit" method="post" class="stack">
+    <input type="hidden" name="preview_id" value="{{ preview_id }}">
+    <table class="table compact">
+      <thead>
+        <tr><th>Date</th><th>Account</th><th>Payee</th><th>Memo</th><th>Category</th><th>Save Rule</th><th class="amount">Amount</th><th>Reason</th></tr>
+      </thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.posted_at[:10] }}</td>
+          <td>{{ row.account_name }}</td>
+          <td>{{ row.payee }}</td>
+          <td>{{ row.memo }}</td>
+          <td>
+            <div class="category-choice">
+              <select name="category_{{ loop.index0 }}">
+                <option value="">Uncategorised</option>
+                {% for category in categories %}
+                  <option value="{{ category.name }}" {% if category.name == row.selected_category_name %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+              </select>
+              {% if row.ai_guess_reason %}
+                <span class="mini-badge ai-badge" title="Category suggested by AI because no mapping rule matched.">AI</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <label class="stack-tight">
+              <span><input type="checkbox" name="save_rule_{{ loop.index0 }}"> Save</span>
+            </label>
+            <select name="rule_match_type_{{ loop.index0 }}">
+              <option value="contains">contains</option>
+              <option value="exact">exact</option>
+              <option value="starts">starts</option>
+              <option value="ends">ends</option>
+            </select>
+            <input type="text" name="rule_pattern_{{ loop.index0 }}" value="{{ row.default_rule_pattern }}" placeholder="Rule pattern">
+          </td>
+          <td class="amount">{{ row.amount }}</td>
+          <td class="muted">{{ row.ai_guess_reason or row.review_note or row.mapping_source }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="muted">No new transactions found in this upload.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <button class="button" type="submit">Commit Import</button>
+  </form>
+</section>
+{% endblock %}

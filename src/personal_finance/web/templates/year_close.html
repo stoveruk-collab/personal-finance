@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel narrow">
+  <h2>Year Close</h2>
+  <p>Closing a year archives monthly HTML reports and category aggregates, then removes transaction-level detail for that calendar year from the live ledger.</p>
+  <form action="/years/close" method="post" class="inline-form">
+    <select name="year" required>
+      {% for year in years %}
+        <option value="{{ year }}">{{ year }}</option>
+      {% endfor %}
+    </select>
+    <button class="button danger" type="submit">Close Year</button>
+  </form>
+</section>
+{% endblock %}
+

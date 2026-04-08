@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero report-hero">
+  <h2>Budget Editor</h2>
+  <p>Maintain one retroactive monthly budget per category. Changes apply to all reports for that category.</p>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h3>Monthly Budgets</h3>
+      <p class="muted">Simple system, no versioning: one current monthly budget per category.</p>
+    </div>
+    <a class="button secondary" href="/reports?period=year">Return to Reports</a>
+  </div>
+  <form action="/budgets" method="post" class="stack">
+    <input type="hidden" name="period" value="year">
+    <div class="budget-editor">
+      {% for budget in budgets %}
+      <div class="budget-row compact">
+        <label for="budget_{{ budget.id }}">{{ budget.category.name }}</label>
+        <input id="budget_{{ budget.id }}" name="budget_{{ budget.id }}" type="text" value="{{ '%.2f'|format(budget.monthly_budget) }}">
+      </div>
+      {% endfor %}
+    </div>
+    <div class="action-row">
+      <button class="button" type="submit">Save Budgets</button>
+      <a class="button secondary" href="/reports?period=year">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

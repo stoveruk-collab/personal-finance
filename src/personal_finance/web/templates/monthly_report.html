@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero report-hero">
+  <h2>Profit &amp; Loss Statement</h2>
+  <p>{{ report.title_month }} {{ report.year }} | Built from uploaded transaction files with mappings and import-time review.</p>
+  <div class="stats-grid">
+    <article class="stat-card"><span class="label">Total Income</span><span class="value">{{ format_gbp(report.total_income) }}</span></article>
+    <article class="stat-card"><span class="label">Total Expenses</span><span class="value">{{ format_gbp(report.total_expenses) }}</span></article>
+    <article class="stat-card"><span class="label">Net Surplus</span><span class="value">{{ format_gbp(report.net_surplus) }}</span></article>
+    <article class="stat-card"><span class="label">Transfers Excluded</span><span class="value">{{ format_gbp(report.transfers_excluded) }}</span></article>
+  </div>
+</section>
+
+<section class="panel">
+  <h3>Statement Summary</h3>
+  <table class="statement">
+    <tbody>
+      <tr class="section"><td>Income</td><td></td></tr>
+      {% for section in report.income_sections %}
+      <tr><td>{{ section.category }}</td><td class="amount">{{ format_gbp(section.amount) }}</td></tr>
+      {% endfor %}
+      <tr class="total"><td>Total Income</td><td class="amount">{{ format_gbp(report.total_income) }}</td></tr>
+      <tr class="section"><td>Expenses</td><td></td></tr>
+      {% for section in report.expense_sections %}
+      <tr><td>{{ section.category }}</td><td class="amount">{{ format_gbp(section.amount) }}</td></tr>
+      {% endfor %}
+      <tr class="total"><td>Total Expenses</td><td class="amount">{{ format_gbp(report.total_expenses) }}</td></tr>
+      <tr class="net"><td>Net Surplus</td><td class="amount">{{ format_gbp(report.net_surplus) }}</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h3>Income Detail</h3>
+  {% for section in report.income_sections %}
+  <details class="category-block" {% if loop.first %}open{% endif %}>
+    <summary><span>{{ section.category }}</span><span>{{ format_gbp(section.amount) }}</span></summary>
+    <table class="table">
+      <thead><tr><th>Date</th><th>Account</th><th>Payee</th><th>Memo</th><th class="amount">Amount</th></tr></thead>
+      <tbody>
+        {% for tx in section.transactions %}
+        <tr>
+          <td>{{ tx.posted_at.strftime("%d %b %Y") }}</td>
+          <td>{{ tx.account.name }}</td>
+          <td>{{ tx.payee }}</td>
+          <td>{{ tx.memo or " " }}</td>
+          <td class="amount">{{ format_gbp(tx.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <h3>Expense Detail</h3>
+  {% for section in report.expense_sections %}
+  <details class="category-block" {% if loop.first %}open{% endif %}>
+    <summary><span>{{ section.category }}</span><span>{{ format_gbp(section.amount) }}</span></summary>
+    <table class="table">
+      <thead><tr><th>Date</th><th>Account</th><th>Payee</th><th>Memo</th><th class="amount">Amount</th></tr></thead>
+      <tbody>
+        {% for tx in section.transactions %}
+        <tr>
+          <td>{{ tx.posted_at.strftime("%d %b %Y") }}</td>
+          <td>{{ tx.account.name }}</td>
+          <td>{{ tx.payee }}</td>
+          <td>{{ tx.memo or " " }}</td>
+          <td class="amount">{{ format_gbp(-tx.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endfor %}
+</section>
+
+{% if report.excluded_transfers %}
+<section class="panel">
+  <h3>Excluded Transfers</h3>
+  <table class="table">
+    <thead><tr><th>Date</th><th>Account</th><th>Payee</th><th>Memo</th><th class="amount">Amount</th></tr></thead>
+    <tbody>
+      {% for tx in report.excluded_transfers %}
+      <tr>
+        <td>{{ tx.posted_at.strftime("%d %b %Y") }}</td>
+        <td>{{ tx.account.name }}</td>
+        <td>{{ tx.payee }}</td>
+        <td>{{ tx.memo or " " }}</td>
+        <td class="amount">{{ format_gbp(tx.amount if tx.amount > 0 else -tx.amount) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if report.review_rows %}
+<section class="panel">
+  <h3>Review Items</h3>
+  <table class="table">
+    <thead><tr><th>Date</th><th>Payee</th><th>Category</th><th>Reason</th></tr></thead>
+    <tbody>
+      {% for tx in report.review_rows %}
+      <tr>
+        <td>{{ tx.posted_at.strftime("%d %b %Y") }}</td>
+        <td>{{ tx.payee }}</td>
+        <td>{{ tx.category.name if tx.category else "Uncategorised" }}</td>
+        <td>{{ tx.review_note or tx.ai_guess_reason }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

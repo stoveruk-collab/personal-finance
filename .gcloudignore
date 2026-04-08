@@ -1,0 +1,12 @@
+.git
+.gitignore
+.venv
+.data
+node_modules
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+dist
+build
