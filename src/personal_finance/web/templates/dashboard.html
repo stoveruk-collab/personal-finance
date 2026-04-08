@@ -34,7 +34,7 @@
   <div class="panel-head">
     <div>
       <h3>{{ current_month_label }} Budget Watch</h3>
-      <p class="muted">Actual spend versus monthly budget for the watched categories.</p>
+      <p class="muted">Actual spend versus monthly budget for every category with current-month activity or budget.</p>
     </div>
   </div>
 
@@ -51,6 +51,9 @@
         <span class="watch-values">
           <span>{{ format_gbp(row.actual) }}</span>
           <span class="muted-small">budget {{ format_gbp(row.budget) }}</span>
+          {% if row.budget > 0 %}
+          <span class="muted-small {% if row.is_over_budget %}over-budget-note{% endif %}">{{ '%.0f'|format(row.percent_of_budget) }}% of budget</span>
+          {% endif %}
         </span>
       </div>
       <div class="watch-bars">
@@ -58,7 +61,7 @@
           <div class="watch-bar budget-bar" style="width: {{ '%.2f'|format(row.budget_width) }}%"></div>
         </div>
         <div class="watch-bar-track">
-          <div class="watch-bar actual-bar" style="width: {{ '%.2f'|format(row.actual_width) }}%"></div>
+          <div class="watch-bar actual-bar {% if row.is_over_budget %}actual-bar-over{% endif %}" style="width: {{ '%.2f'|format(row.actual_width) }}%"></div>
         </div>
       </div>
       <div class="watch-foot">

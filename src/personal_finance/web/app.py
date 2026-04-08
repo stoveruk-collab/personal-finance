@@ -142,22 +142,22 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         budget = budget_lookup.get(category_name, Decimal("0"))
         if actual == 0 and budget == 0:
             continue
+        scale_value = max(actual, budget, Decimal("1"))
+        budget_width = (budget / scale_value) * Decimal("100") if budget > 0 else Decimal("0")
+        actual_width = (actual / scale_value) * Decimal("100") if actual > 0 else Decimal("0")
+        percent_of_budget = ((actual / budget) * Decimal("100")) if budget > 0 else Decimal("0")
         chart_rows.append(
             {
                 "category": category_name,
                 "actual": actual,
                 "budget": budget,
                 "variance": budget - actual,
+                "budget_width": float(budget_width),
+                "actual_width": float(actual_width),
+                "percent_of_budget": float(percent_of_budget),
+                "is_over_budget": actual > budget if budget > 0 else actual > 0,
             }
         )
-
-    max_chart_value = Decimal("1")
-    for row in chart_rows:
-        max_chart_value = max(max_chart_value, row["actual"], row["budget"])
-    scale = max_chart_value if max_chart_value > 0 else Decimal("1")
-    for row in chart_rows:
-        row["actual_width"] = float((row["actual"] / scale) * Decimal("100")) if scale else 0.0
-        row["budget_width"] = float((row["budget"] / scale) * Decimal("100")) if scale else 0.0
     auth_warning = None
     if not settings.allow_dev_login and not (settings.google_client_id and settings.google_client_secret):
         auth_warning = (

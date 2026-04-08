@@ -327,6 +327,9 @@ body {
 .actual-bar {
   background: linear-gradient(90deg, #7c5c2b 0%, #b58d4b 100%);
 }
+.actual-bar-over {
+  background: linear-gradient(90deg, #8a1c1c 0%, #c94a4a 100%);
+}
 .watch-chart {
   display: grid;
   gap: 18px;
@@ -373,6 +376,10 @@ body {
 }
 .watch-variance.over-budget {
   color: var(--danger);
+}
+.over-budget-note {
+  color: var(--danger);
+  font-weight: 700;
 }
 .table-scroll {
   overflow-x: auto;
