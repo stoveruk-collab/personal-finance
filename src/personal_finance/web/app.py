@@ -103,8 +103,7 @@ def render_monthly_report_html(request: Request, report: dict) -> HTMLResponse:
 
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
+def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depends(require_user)):
     account_count = db.scalar(select(func.count()).select_from(Account)) or 0
     transaction_count = db.scalar(select(func.count()).select_from(Transaction)) or 0
     open_years = sorted(set(db.scalars(select(Transaction.year)).all()), reverse=True)
