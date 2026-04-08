@@ -7,6 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import uvicorn
 from authlib.integrations.starlette_client import OAuth
@@ -21,7 +22,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from .db import Base, SessionLocal, engine, get_db
 from .models import Account, BudgetSetting, Category, HistoricalReport, ImportBatch, ImportPreview, MappingRule, Transaction, User
 from .parsing import build_fingerprint, existing_occurrence_count, parse_uploaded_file, transaction_to_dict
-from .reports import annual_report_data, available_years, budget_settings, close_year, format_gbp, month_options, monthly_report_data
+from .reports import annual_report_data, available_years, budget_settings, close_year, format_gbp, month_name, month_options, monthly_report_data
 from .seed import seed_defaults
 from .services.categorizer import guess_category
 from .settings import load_web_settings
@@ -104,10 +105,44 @@ def render_monthly_report_html(request: Request, report: dict) -> HTMLResponse:
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
-    latest_tx = db.scalars(select(Transaction).order_by(Transaction.posted_at.desc()).limit(10)).all()
     account_count = db.scalar(select(func.count()).select_from(Account)) or 0
     transaction_count = db.scalar(select(func.count()).select_from(Transaction)) or 0
     open_years = sorted(set(db.scalars(select(Transaction.year)).all()), reverse=True)
+    now = datetime.now(ZoneInfo("Europe/London"))
+    current_year = now.year
+    current_month = now.month
+    current_month_label = f"{month_name(current_year, current_month)} {current_year}"
+    current_report = monthly_report_data(db, current_year, current_month)
+    budget_lookup = {
+        budget.category.name: Decimal(str(budget.monthly_budget))
+        for budget in budget_settings(db)
+        if budget.category is not None
+    }
+    actual_lookup = {section["category"]: section["amount"] for section in current_report["expense_sections"]}
+    watched_categories = [
+        "Groceries & Supplies",
+        "Dining & Food Delivery",
+        "Discretionary Retail",
+    ]
+    watch_rows = []
+    max_watch_value = Decimal("1")
+    for category_name in watched_categories:
+        actual = actual_lookup.get(category_name, Decimal("0"))
+        budget = budget_lookup.get(category_name, Decimal("0"))
+        variance = budget - actual
+        max_watch_value = max(max_watch_value, actual, budget)
+        watch_rows.append(
+            {
+                "category": category_name,
+                "actual": actual,
+                "budget": budget,
+                "variance": variance,
+            }
+        )
+    scale = max_watch_value if max_watch_value > 0 else Decimal("1")
+    for row in watch_rows:
+        row["actual_width"] = float((row["actual"] / scale) * Decimal("100")) if scale else 0.0
+        row["budget_width"] = float((row["budget"] / scale) * Decimal("100")) if scale else 0.0
     auth_warning = None
     if not settings.allow_dev_login and not (settings.google_client_id and settings.google_client_secret):
         auth_warning = (
@@ -120,12 +155,14 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         context={
             "request": request,
             "user": user,
-            "latest_transactions": latest_tx,
             "account_count": account_count,
             "transaction_count": transaction_count,
             "open_years": open_years,
             "auth_warning": auth_warning,
             "format_gbp": format_gbp,
+            "current_month_label": current_month_label,
+            "watch_rows": watch_rows,
+            "current_report": current_report,
         },
     )
 
