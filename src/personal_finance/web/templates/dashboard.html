@@ -35,12 +35,6 @@
     <div>
       <h3>{{ current_month_label }} Budget Watch</h3>
       <p class="muted">Actual spend versus monthly budget for every category with current-month activity or budget.</p>
-      <p class="watch-summary-line">
-        <strong>{{ format_gbp(current_report.total_expenses) }}</strong>
-        actual this month against
-        <strong>{{ format_gbp(current_report.total_budget) }}</strong>
-        total budget.
-      </p>
     </div>
   </div>
 
@@ -50,6 +44,30 @@
   </div>
 
   <div class="watch-chart">
+    <div class="watch-row watch-row-overall">
+      <div class="watch-head">
+        <span class="watch-category">{{ overall_chart_row.category }}</span>
+        <span class="watch-values">
+          <span>{{ format_gbp(overall_chart_row.actual) }}</span>
+          <span class="muted-small">budget {{ format_gbp(overall_chart_row.budget) }}</span>
+          {% if overall_chart_row.budget > 0 %}
+          <span class="muted-small {% if overall_chart_row.is_over_budget %}over-budget-note{% endif %}">{{ '%.0f'|format(overall_chart_row.percent_of_budget) }}% of budget</span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="watch-bars">
+        <div class="watch-bar-track">
+          <div class="watch-bar budget-bar" style="width: {{ '%.2f'|format(overall_chart_row.budget_width) }}%"></div>
+        </div>
+        <div class="watch-bar-track">
+          <div class="watch-bar actual-bar {% if overall_chart_row.is_over_budget %}actual-bar-over{% endif %}" style="width: {{ '%.2f'|format(overall_chart_row.actual_width) }}%"></div>
+        </div>
+      </div>
+      <div class="watch-foot">
+        <span class="muted-small">Variance</span>
+        <span class="watch-variance {% if overall_chart_row.variance < 0 %}over-budget{% endif %}">{{ format_gbp(overall_chart_row.variance) }}</span>
+      </div>
+    </div>
     {% for row in chart_rows %}
     <div class="watch-row">
       <div class="watch-head">

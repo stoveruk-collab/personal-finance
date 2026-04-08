@@ -332,11 +332,6 @@ body {
   flex-wrap: wrap;
   margin-bottom: 18px;
 }
-.watch-summary-line {
-  margin: 10px 0 0;
-  color: var(--ink);
-  font-size: 1rem;
-}
 .legend-item {
   display: inline-flex;
   align-items: center;
@@ -367,6 +362,11 @@ body {
 .watch-row {
   display: grid;
   gap: 10px;
+}
+.watch-row-overall {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
 }
 .watch-head,
 .watch-foot {

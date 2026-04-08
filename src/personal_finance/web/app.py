@@ -136,28 +136,35 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             }
         )
 
+    def build_chart_row(category_name: str, actual: Decimal, budget: Decimal) -> dict:
+        scale_value = max(actual, budget, Decimal("1"))
+        budget_width = (budget / scale_value) * Decimal("100") if budget > 0 else Decimal("0")
+        actual_width = (actual / scale_value) * Decimal("100") if actual > 0 else Decimal("0")
+        percent_of_budget = ((actual / budget) * Decimal("100")) if budget > 0 else Decimal("0")
+        return {
+            "category": category_name,
+            "actual": actual,
+            "budget": budget,
+            "variance": budget - actual,
+            "budget_width": float(budget_width),
+            "actual_width": float(actual_width),
+            "percent_of_budget": float(percent_of_budget),
+            "is_over_budget": actual > budget if budget > 0 else actual > 0,
+        }
+
+    overall_chart_row = build_chart_row(
+        "Overall",
+        current_report["total_expenses"],
+        current_report["total_budget"],
+    )
+
     chart_rows = []
     for category_name in sorted(set(actual_lookup) | set(budget_lookup)):
         actual = actual_lookup.get(category_name, Decimal("0"))
         budget = budget_lookup.get(category_name, Decimal("0"))
         if actual == 0 and budget == 0:
             continue
-        scale_value = max(actual, budget, Decimal("1"))
-        budget_width = (budget / scale_value) * Decimal("100") if budget > 0 else Decimal("0")
-        actual_width = (actual / scale_value) * Decimal("100") if actual > 0 else Decimal("0")
-        percent_of_budget = ((actual / budget) * Decimal("100")) if budget > 0 else Decimal("0")
-        chart_rows.append(
-            {
-                "category": category_name,
-                "actual": actual,
-                "budget": budget,
-                "variance": budget - actual,
-                "budget_width": float(budget_width),
-                "actual_width": float(actual_width),
-                "percent_of_budget": float(percent_of_budget),
-                "is_over_budget": actual > budget if budget > 0 else actual > 0,
-            }
-        )
+        chart_rows.append(build_chart_row(category_name, actual, budget))
     auth_warning = None
     if not settings.allow_dev_login and not (settings.google_client_id and settings.google_client_secret):
         auth_warning = (
@@ -177,6 +184,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             "format_gbp": format_gbp,
             "current_month_label": current_month_label,
             "watch_rows": watch_rows,
+            "overall_chart_row": overall_chart_row,
             "chart_rows": chart_rows,
             "current_report": current_report,
         },
