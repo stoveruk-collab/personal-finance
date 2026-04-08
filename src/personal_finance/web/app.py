@@ -15,7 +15,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request,
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -456,6 +456,8 @@ def ledger(
     db: Session = Depends(get_db),
     user: User = Depends(require_user),
     account_id: Optional[str] = Query(default=None),
+    month: Optional[str] = Query(default=None),
+    search: Optional[str] = Query(default=None),
 ):
     parsed_account_id: Optional[int] = None
     if account_id not in (None, ""):
@@ -463,16 +465,105 @@ def ledger(
             parsed_account_id = int(account_id)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail="account_id must be an integer when provided.") from exc
+    month_start: Optional[datetime] = None
+    next_month_start: Optional[datetime] = None
+    if month not in (None, ""):
+        try:
+            month_start = datetime.strptime(month, "%Y-%m")
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="month must be in YYYY-MM format when provided.") from exc
+        if month_start.month == 12:
+            next_month_start = datetime(month_start.year + 1, 1, 1)
+        else:
+            next_month_start = datetime(month_start.year, month_start.month + 1, 1)
+    search_text = (search or "").strip()
     query = select(Transaction).options(joinedload(Transaction.account), joinedload(Transaction.category)).order_by(Transaction.posted_at.desc(), Transaction.id.desc())
     if parsed_account_id is not None:
         query = query.where(Transaction.account_id == parsed_account_id)
+    if month_start is not None and next_month_start is not None:
+        query = query.where(Transaction.posted_at >= month_start, Transaction.posted_at < next_month_start)
+    if search_text:
+        pattern = f"%{search_text}%"
+        query = query.where(
+            or_(
+                Transaction.payee.ilike(pattern),
+                Transaction.memo.ilike(pattern),
+                Transaction.raw_text.ilike(pattern),
+            )
+        )
     transactions = db.scalars(query.limit(500)).all()
     accounts = db.scalars(select(Account).order_by(Account.name)).all()
+    categories = db.scalars(select(Category).where(Category.is_active.is_(True)).order_by(Category.name)).all()
+    month_values = []
+    seen_months: set[str] = set()
+    for posted_at in db.scalars(select(Transaction.posted_at).order_by(Transaction.posted_at.desc())).all():
+        month_value = posted_at.strftime("%Y-%m")
+        if month_value in seen_months:
+            continue
+        seen_months.add(month_value)
+        month_values.append(
+            {
+                "value": month_value,
+                "label": posted_at.strftime("%B %Y"),
+            }
+        )
     return templates.TemplateResponse(
         request=request,
         name="ledger.html",
-        context={"request": request, "user": user, "transactions": transactions, "accounts": accounts, "selected_account_id": parsed_account_id, "format_gbp": format_gbp},
+        context={
+            "request": request,
+            "user": user,
+            "transactions": transactions,
+            "accounts": accounts,
+            "categories": categories,
+            "month_values": month_values,
+            "selected_account_id": parsed_account_id,
+            "selected_month": month or "",
+            "search": search_text,
+            "format_gbp": format_gbp,
+        },
     )
+
+
+@app.post("/ledger/transactions/{transaction_id}")
+async def update_ledger_transaction(
+    transaction_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    form = await request.form()
+    category_id_raw = (form.get("category_id") or "").strip()
+    account_id = (form.get("account_id") or "").strip()
+    month = (form.get("month") or "").strip()
+    search = (form.get("search") or "").strip()
+
+    transaction = db.get(Transaction, transaction_id)
+    if transaction is None:
+        raise HTTPException(status_code=404, detail="Transaction not found.")
+
+    category = None
+    if category_id_raw:
+        try:
+            category_id = int(category_id_raw)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="category_id must be an integer when provided.") from exc
+        category = db.get(Category, category_id)
+        if category is None:
+            raise HTTPException(status_code=404, detail="Category not found.")
+
+    transaction.category_id = category.id if category else None
+    db.commit()
+
+    query_parts = []
+    if account_id:
+        query_parts.append(f"account_id={account_id}")
+    if month:
+        query_parts.append(f"month={month}")
+    if search:
+        query_parts.append(f"search={search}")
+    query_string = f"?{'&'.join(query_parts)}" if query_parts else ""
+    return RedirectResponse(f"/ledger{query_string}", status_code=303)
 
 
 @app.get("/accounts/{account_id}/ledger", response_class=HTMLResponse)

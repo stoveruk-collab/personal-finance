@@ -3,7 +3,14 @@
 <section class="panel">
   <div class="panel-head">
     <h2>Ledger</h2>
-    <form method="get" action="/ledger" class="inline-form">
+    <form method="get" action="/ledger" class="ledger-filter-form">
+      <input type="text" name="search" value="{{ search }}" placeholder="Search payee, memo, or raw text">
+      <select name="month">
+        <option value="">All months</option>
+        {% for month_option in month_values %}
+          <option value="{{ month_option.value }}" {% if selected_month == month_option.value %}selected{% endif %}>{{ month_option.label }}</option>
+        {% endfor %}
+      </select>
       <select name="account_id">
         <option value="">All accounts</option>
         {% for account in accounts %}
@@ -13,21 +20,38 @@
       <button class="button secondary" type="submit">Filter</button>
     </form>
   </div>
-  <table class="table">
-    <thead><tr><th>Date</th><th>Account</th><th>Payee</th><th>Memo</th><th>Category</th><th class="amount">Amount</th></tr></thead>
-    <tbody>
-      {% for tx in transactions %}
-      <tr>
-        <td>{{ tx.posted_at.strftime("%Y-%m-%d") }}</td>
-        <td>{{ tx.account.name }}</td>
-        <td>{{ tx.payee }}</td>
-        <td>{{ tx.memo }}</td>
-        <td>{{ tx.category.name if tx.category else "Uncategorised" }}</td>
-        <td class="amount">{{ format_gbp(tx.amount) }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-scroll">
+    <table class="table ledger-table">
+      <thead><tr><th>Date</th><th>Account</th><th>Payee</th><th>Memo</th><th>Category</th><th class="amount">Amount</th></tr></thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr>
+          <td>{{ tx.posted_at.strftime("%Y-%m-%d") }}</td>
+          <td>{{ tx.account.name }}</td>
+          <td>{{ tx.payee }}</td>
+          <td>{{ tx.memo }}</td>
+          <td>
+            <form method="post" action="/ledger/transactions/{{ tx.id }}" class="ledger-category-form">
+              <input type="hidden" name="account_id" value="{{ selected_account_id or '' }}">
+              <input type="hidden" name="month" value="{{ selected_month }}">
+              <input type="hidden" name="search" value="{{ search }}">
+              <select name="category_id">
+                <option value="">Uncategorised</option>
+                {% for category in categories %}
+                  <option value="{{ category.id }}" {% if tx.category and tx.category.id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+              </select>
+              <button class="button secondary" type="submit">Save</button>
+            </form>
+          </td>
+          <td class="amount">{{ format_gbp(tx.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if transactions|length == 0 %}
+  <p class="muted">No transactions match the current ledger filters.</p>
+  {% endif %}
 </section>
 {% endblock %}
-

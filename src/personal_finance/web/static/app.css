@@ -127,6 +127,31 @@ body {
 .stack { display: grid; gap: 16px; }
 .stack-tight { display: grid; gap: 6px; }
 .inline-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.ledger-filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.ledger-filter-form input[type="text"] {
+  min-width: 260px;
+}
+.ledger-table td {
+  vertical-align: middle;
+}
+.ledger-category-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 260px;
+}
+.ledger-category-form select {
+  min-width: 0;
+  width: 100%;
+}
+.ledger-category-form .button {
+  white-space: nowrap;
+}
 .report-selector {
   margin-top: 22px;
   display: flex;
@@ -418,6 +443,10 @@ input[type="file"]::file-selector-button {
   .sidebar { border-right: none; border-bottom: 1px solid rgba(82, 96, 109, 0.15); }
   .main { padding: 18px; }
   .budget-row.compact { grid-template-columns: 1fr; }
+  .ledger-category-form {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
   .hero-top,
   .watch-head,
   .watch-foot {
