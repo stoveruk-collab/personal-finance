@@ -125,22 +125,37 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "Discretionary Retail",
     ]
     watch_rows = []
-    max_watch_value = Decimal("1")
     for category_name in watched_categories:
         actual = actual_lookup.get(category_name, Decimal("0"))
         budget = budget_lookup.get(category_name, Decimal("0"))
-        variance = budget - actual
-        max_watch_value = max(max_watch_value, actual, budget)
         watch_rows.append(
             {
                 "category": category_name,
                 "actual": actual,
                 "budget": budget,
-                "variance": variance,
             }
         )
-    scale = max_watch_value if max_watch_value > 0 else Decimal("1")
-    for row in watch_rows:
+
+    chart_rows = []
+    for category_name in sorted(set(actual_lookup) | set(budget_lookup)):
+        actual = actual_lookup.get(category_name, Decimal("0"))
+        budget = budget_lookup.get(category_name, Decimal("0"))
+        if actual == 0 and budget == 0:
+            continue
+        chart_rows.append(
+            {
+                "category": category_name,
+                "actual": actual,
+                "budget": budget,
+                "variance": budget - actual,
+            }
+        )
+
+    max_chart_value = Decimal("1")
+    for row in chart_rows:
+        max_chart_value = max(max_chart_value, row["actual"], row["budget"])
+    scale = max_chart_value if max_chart_value > 0 else Decimal("1")
+    for row in chart_rows:
         row["actual_width"] = float((row["actual"] / scale) * Decimal("100")) if scale else 0.0
         row["budget_width"] = float((row["budget"] / scale) * Decimal("100")) if scale else 0.0
     auth_warning = None
@@ -162,6 +177,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             "format_gbp": format_gbp,
             "current_month_label": current_month_label,
             "watch_rows": watch_rows,
+            "chart_rows": chart_rows,
             "current_report": current_report,
         },
     )
