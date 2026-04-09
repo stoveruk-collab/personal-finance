@@ -20,7 +20,7 @@ class WebSettings:
     preview_root: Path
     upload_root: Path
     allow_dev_login: bool
-    allowed_google_email: str
+    allowed_google_emails: tuple[str, ...]
     public_base_url: str
 
 
@@ -49,6 +49,15 @@ def load_web_settings() -> WebSettings:
         else:
             database_url = f"sqlite:///{data_root / 'personal_finance.db'}"
 
+    allowed_google_emails_text = os.environ.get("ALLOWED_GOOGLE_EMAILS", "").strip()
+    if not allowed_google_emails_text:
+        allowed_google_emails_text = os.environ.get("ALLOWED_GOOGLE_EMAIL", "").strip()
+    allowed_google_emails = tuple(
+        email.strip().lower()
+        for email in allowed_google_emails_text.split(",")
+        if email.strip()
+    )
+
     return WebSettings(
         app_name="Personal Finance Ledger",
         secret_key=os.environ.get("APP_SECRET_KEY", "change-me-before-production"),
@@ -61,6 +70,6 @@ def load_web_settings() -> WebSettings:
         preview_root=preview_root,
         upload_root=upload_root,
         allow_dev_login=os.environ.get("ALLOW_DEV_LOGIN", "0") == "1",
-        allowed_google_email=os.environ.get("ALLOWED_GOOGLE_EMAIL", "").strip().lower(),
+        allowed_google_emails=allowed_google_emails,
         public_base_url=os.environ.get("PUBLIC_BASE_URL", "").rstrip("/"),
     )

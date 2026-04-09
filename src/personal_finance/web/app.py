@@ -179,7 +179,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depe
     if not settings.allow_dev_login and not (settings.google_client_id and settings.google_client_secret):
         auth_warning = (
             "Google OAuth is not configured yet. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, "
-            f"and ALLOWED_GOOGLE_EMAIL={settings.allowed_google_email} before using this app without development login."
+            "and ALLOWED_GOOGLE_EMAILS before using this app without development login."
         )
     return templates.TemplateResponse(
         request=request,
@@ -273,10 +273,10 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
     token = await oauth.google.authorize_access_token(request)
     user_info = token["userinfo"]
     email = user_info["email"].strip().lower()
-    if email != settings.allowed_google_email:
+    if email not in settings.allowed_google_emails:
         request.session.clear()
         return HTMLResponse(
-            f"Access denied. This app only allows Google sign-in for {settings.allowed_google_email}.",
+            "Access denied. This app only allows Google sign-in for approved users.",
             status_code=403,
         )
     user = db.scalar(select(User).where(User.google_sub == user_info["sub"]))

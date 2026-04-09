@@ -40,7 +40,7 @@ The deployment script expects values like:
 - `INSTANCE_NAME`
 - `DB_NAME`
 - `DB_USER`
-- `ALLOWED_GOOGLE_EMAIL`
+- `ALLOWED_GOOGLE_EMAILS`
 - `OWNER_LABEL`
 
 The app itself uses:
@@ -129,7 +129,7 @@ Typical values:
 - local redirect: `http://127.0.0.1:8000/auth/google`
 - production redirect: `https://<your-cloud-run-url>/auth/google`
 
-Use `ALLOWED_GOOGLE_EMAIL` to restrict access to a single user.
+Use `ALLOWED_GOOGLE_EMAILS` to restrict access to one or more approved users with a comma-separated allowlist.
 
 ## Notes
 
