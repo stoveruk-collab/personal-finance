@@ -68,6 +68,30 @@
         <span class="watch-variance {% if overall_chart_row.variance < 0 %}over-budget{% endif %}">{{ format_gbp(overall_chart_row.variance) }}</span>
       </div>
     </div>
+    <div class="watch-row watch-row-overall">
+      <div class="watch-head">
+        <span class="watch-category">{{ discretionary_chart_row.category }}</span>
+        <span class="watch-values">
+          <span>{{ format_gbp(discretionary_chart_row.actual) }}</span>
+          <span class="muted-small">budget {{ format_gbp(discretionary_chart_row.budget) }}</span>
+          {% if discretionary_chart_row.budget > 0 %}
+          <span class="muted-small {% if discretionary_chart_row.is_over_budget %}over-budget-note{% endif %}">{{ '%.0f'|format(discretionary_chart_row.percent_of_budget) }}% of budget</span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="watch-bars">
+        <div class="watch-bar-track">
+          <div class="watch-bar budget-bar" style="width: {{ '%.2f'|format(discretionary_chart_row.budget_width) }}%"></div>
+        </div>
+        <div class="watch-bar-track">
+          <div class="watch-bar actual-bar {% if discretionary_chart_row.is_over_budget %}actual-bar-over{% endif %}" style="width: {{ '%.2f'|format(discretionary_chart_row.actual_width) }}%"></div>
+        </div>
+      </div>
+      <div class="watch-foot">
+        <span class="muted-small">Variance</span>
+        <span class="watch-variance {% if discretionary_chart_row.variance < 0 %}over-budget{% endif %}">{{ format_gbp(discretionary_chart_row.variance) }}</span>
+      </div>
+    </div>
     {% for row in chart_rows %}
     <div class="watch-row">
       <div class="watch-head">
