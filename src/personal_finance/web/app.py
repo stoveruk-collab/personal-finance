@@ -118,6 +118,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depe
         if budget.category is not None
     }
     actual_lookup = {section["category"]: section["amount"] for section in current_report["expense_sections"]}
+    discretionary_exclusions = {"Rent", "Utilities & Taxes", "Business Expense"}
     watched_categories = [
         "Groceries & Supplies",
         "Dining & Food Delivery",
@@ -156,6 +157,16 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depe
         current_report["total_expenses"],
         current_report["total_budget"],
     )
+    discretionary_categories = [
+        category_name
+        for category_name in set(actual_lookup) | set(budget_lookup)
+        if category_name not in discretionary_exclusions
+    ]
+    discretionary_chart_row = build_chart_row(
+        "Discretionary",
+        sum((actual_lookup.get(category_name, Decimal("0")) for category_name in discretionary_categories), Decimal("0")),
+        sum((budget_lookup.get(category_name, Decimal("0")) for category_name in discretionary_categories), Decimal("0")),
+    )
 
     chart_rows = []
     for category_name in sorted(set(actual_lookup) | set(budget_lookup)):
@@ -184,6 +195,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depe
             "current_month_label": current_month_label,
             "watch_rows": watch_rows,
             "overall_chart_row": overall_chart_row,
+            "discretionary_chart_row": discretionary_chart_row,
             "chart_rows": chart_rows,
             "current_report": current_report,
         },
