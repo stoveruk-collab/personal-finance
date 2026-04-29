@@ -3,10 +3,122 @@
 <section class="panel narrow">
   <h2>Upload Transaction Files</h2>
   <p>Upload manually downloaded `.qif`, `.ofx`, or `.qfx` files. The app will deduplicate, apply mapping rules, and ask OpenAI for a best guess when a mapping is missing.</p>
-  <form action="/imports/preview" method="post" enctype="multipart/form-data" class="stack">
+  <form action="/imports/preview" method="post" enctype="multipart/form-data" class="stack" data-import-upload-form>
     <input type="file" name="files" accept=".qif,.ofx,.qfx" multiple required>
-    <button class="button" type="submit">Preview Import</button>
+    <div class="import-progress" data-import-progress hidden aria-live="polite">
+      <div class="import-progress-head">
+        <strong data-import-progress-label>Preparing upload...</strong>
+        <span class="muted" data-import-progress-value>0%</span>
+      </div>
+      <div class="import-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-import-progressbar>
+        <div class="import-progress-fill" data-import-progress-fill></div>
+      </div>
+      <p class="muted" data-import-progress-note>Uploading files for preview.</p>
+    </div>
+    <button class="button" type="submit" data-import-submit>Preview Import</button>
   </form>
 </section>
-{% endblock %}
+<script>
+  (() => {
+    const form = document.querySelector("[data-import-upload-form]");
+    if (!form) return;
 
+    const fileInput = form.querySelector('input[type="file"][name="files"]');
+    const submitButton = form.querySelector("[data-import-submit]");
+    const progress = form.querySelector("[data-import-progress]");
+    const progressBar = form.querySelector("[data-import-progressbar]");
+    const progressFill = form.querySelector("[data-import-progress-fill]");
+    const progressLabel = form.querySelector("[data-import-progress-label]");
+    const progressValue = form.querySelector("[data-import-progress-value]");
+    const progressNote = form.querySelector("[data-import-progress-note]");
+
+    let inFlight = false;
+
+    function setDeterminateProgress(percent, label, note) {
+      const safePercent = Math.max(0, Math.min(100, percent));
+      progress.hidden = false;
+      progress.classList.remove("is-indeterminate");
+      progressBar.setAttribute("aria-valuenow", String(Math.round(safePercent)));
+      progressFill.style.width = `${safePercent}%`;
+      progressLabel.textContent = label;
+      progressValue.textContent = `${Math.round(safePercent)}%`;
+      progressNote.textContent = note;
+    }
+
+    function setIndeterminateProgress(label, note) {
+      progress.hidden = false;
+      progress.classList.add("is-indeterminate");
+      progressBar.removeAttribute("aria-valuenow");
+      progressFill.style.width = "100%";
+      progressLabel.textContent = label;
+      progressValue.textContent = "";
+      progressNote.textContent = note;
+    }
+
+    function showFailure(label, note) {
+      inFlight = false;
+      submitButton.disabled = false;
+      submitButton.textContent = "Preview Import";
+      progress.hidden = false;
+      progress.classList.remove("is-indeterminate");
+      progressBar.setAttribute("aria-valuenow", "0");
+      progressFill.style.width = "0%";
+      progressLabel.textContent = label;
+      progressValue.textContent = "";
+      progressNote.textContent = note;
+    }
+
+    form.addEventListener("submit", (event) => {
+      if (inFlight) {
+        event.preventDefault();
+        return;
+      }
+      if (!fileInput.files.length) return;
+
+      event.preventDefault();
+      inFlight = true;
+      submitButton.disabled = true;
+      submitButton.textContent = "Uploading...";
+      setDeterminateProgress(0, "Starting upload...", "Uploading files for preview.");
+
+      const request = new XMLHttpRequest();
+      request.open(form.method || "POST", form.action, true);
+      request.responseType = "document";
+
+      request.upload.addEventListener("progress", (uploadEvent) => {
+        if (!uploadEvent.lengthComputable) {
+          setIndeterminateProgress("Uploading files...", "Upload progress is not available from the browser for this request.");
+          return;
+        }
+        const percent = (uploadEvent.loaded / uploadEvent.total) * 100;
+        const label = percent >= 100 ? "Upload complete" : "Uploading files...";
+        const note = percent >= 100
+          ? "Files uploaded. Building your preview now."
+          : "Uploading files for preview.";
+        setDeterminateProgress(percent, label, note);
+      });
+
+      request.addEventListener("load", () => {
+        if (request.status >= 200 && request.status < 300 && request.response) {
+          setIndeterminateProgress("Building preview...", "Upload finished. Deduplicating and categorizing transactions.");
+          document.open();
+          document.write(request.response.documentElement.outerHTML);
+          document.close();
+          return;
+        }
+        showFailure("Import preview failed", "The upload did not complete. Please retry.");
+      });
+
+      request.addEventListener("error", () => {
+        showFailure("Upload failed", "The browser could not reach the server. Please retry.");
+      });
+
+      request.addEventListener("abort", () => {
+        showFailure("Upload cancelled", "The upload was interrupted. Please retry.");
+      });
+
+      request.send(new FormData(form));
+    });
+  })();
+</script>
+{% endblock %}

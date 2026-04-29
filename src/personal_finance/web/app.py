@@ -21,7 +21,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .db import Base, SessionLocal, engine, get_db
 from .models import Account, BudgetSetting, Category, HistoricalReport, ImportBatch, ImportPreview, MappingRule, Transaction, User
-from .parsing import build_fingerprint, existing_occurrence_count, parse_uploaded_file, transaction_to_dict
+from .parsing import build_fingerprint, dedupe_sort_key, existing_occurrence_count, parse_uploaded_file, transaction_to_dict
 from .reports import annual_report_data, available_years, budget_settings, close_year, format_gbp, month_name, month_options, monthly_report_data
 from .seed import seed_defaults
 from .services.categorizer import guess_category
@@ -135,6 +135,13 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depe
                 "budget": budget,
             }
         )
+    watch_rows.append(
+        {
+            "category": "Business Expense Receivable",
+            "actual": current_report["business_expense"]["net_receivable"],
+            "budget": Decimal("0"),
+        }
+    )
 
     def build_chart_row(category_name: str, actual: Decimal, budget: Decimal) -> dict:
         scale_value = max(actual, budget, Decimal("1"))
@@ -351,6 +358,15 @@ async def import_preview(request: Request, files: list[UploadFile] = File(...), 
                     "fingerprint": build_fingerprint(item.dedupe_signature, occurrence_index),
                 }
             )
+
+    rows.sort(
+        key=lambda row: dedupe_sort_key(
+            posted_at=datetime.fromisoformat(row["posted_at"]),
+            account_name=row["account_name"],
+            payee=row["payee"],
+            amount=Decimal(row["amount"]),
+        )
+    )
 
     preview_id = store_preview(db, {"rows": rows, "uploaded_files": [file.filename for file in files], "upload_dir": str(upload_dir)})
     return templates.TemplateResponse(

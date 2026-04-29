@@ -4,6 +4,7 @@ This runbook covers the routine operational checks for the hosted app.
 
 ## Hosted Shape
 
+- GCP project: `personal-finance-wm-2026`
 - Cloud Run service: `personal-finance`
 - Cloud SQL instance: `personal-finance-db`
 - Region: `europe-west2`
@@ -31,6 +32,31 @@ From the repo root:
 ```bash
 ./scripts/gcp-cloudrun-deploy.sh
 ```
+
+## Gcloud Auth Checklist
+
+Before asking Codex to deploy or inspect production:
+
+```bash
+gcloud auth login
+gcloud auth application-default login
+gcloud config set project personal-finance-wm-2026
+```
+
+For Codex-driven commands, prefer:
+
+```bash
+./scripts/gcloud-codex.sh auth list --filter=status:ACTIVE
+./scripts/gcloud-codex.sh config get-value project
+```
+
+If Codex reports auth refresh errors:
+
+1. refresh `gcloud` credentials in a normal local shell
+2. verify the active project is still `personal-finance-wm-2026`
+3. retry the command through `./scripts/gcloud-codex.sh`
+
+If Codex reports DNS or connection errors to Google APIs, the problem is session network access, not the stored credentials.
 
 ## Logs
 

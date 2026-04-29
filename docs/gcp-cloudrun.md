@@ -2,6 +2,10 @@
 
 This is the primary hosted deployment path for the app.
 
+Production project:
+
+- `personal-finance-wm-2026`
+
 ## Production Shape
 
 - `Cloud Run` hosts the FastAPI web app
@@ -68,6 +72,52 @@ The script:
 3. attaches the Cloud SQL instance
 4. injects environment variables and secrets
 5. labels the service for cost tracking
+
+## GCP Authentication
+
+Use this sequence before asking Codex to inspect or deploy Cloud Run resources:
+
+```bash
+gcloud auth login
+gcloud auth application-default login
+gcloud config set project personal-finance-wm-2026
+```
+
+Verify the active account and project:
+
+```bash
+gcloud auth list --filter=status:ACTIVE
+gcloud config get-value project
+```
+
+If you are running commands through Codex, use the repo wrapper instead of calling `gcloud` directly:
+
+```bash
+./scripts/gcloud-codex.sh auth list
+./scripts/gcloud-codex.sh config get-value project
+./scripts/gcloud-codex.sh run services describe personal-finance --region europe-west2
+```
+
+Why the wrapper exists:
+
+- Codex runs in a sandbox where `~/.config/gcloud` may be readable but not writable
+- `gcloud` often needs to write refreshed tokens during deploys
+- `scripts/gcloud-codex.sh` copies your normal `gcloud` config into a writable temp directory and runs with `CLOUDSDK_CONFIG` pointed there
+
+Important limitation:
+
+- if the Codex session cannot reach Google APIs such as `oauth2.googleapis.com`, Codex cannot refresh credentials or deploy even if local auth already exists
+- when tokens are expired, re-run `gcloud auth login` and `gcloud auth application-default login` in your normal local shell first, then retry through Codex
+
+Recommended pre-deploy check:
+
+```bash
+./scripts/gcloud-codex.sh auth list --filter=status:ACTIVE
+./scripts/gcloud-codex.sh config get-value project
+./scripts/gcloud-codex.sh run services describe personal-finance --region europe-west2 >/dev/null
+```
+
+If the final command fails with an auth refresh or DNS/network error, fix local auth or network access before asking Codex to deploy.
 
 ## Cloud SQL
 

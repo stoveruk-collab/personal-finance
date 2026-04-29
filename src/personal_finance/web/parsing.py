@@ -126,11 +126,26 @@ def parse_uploaded_file(path: Path, db: Session) -> list[ParsedUploadTransaction
 def build_dedupe_signature(account_name: str, posted_at: datetime, amount: Decimal, payee: str, memo: str) -> str:
     payload = "|".join(
         [
-            normalize(account_name),
             posted_at.strftime("%Y-%m-%d"),
             f"{amount:.2f}",
             normalize(payee),
             normalize(memo),
+        ]
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def dedupe_sort_key(*, posted_at: datetime, account_name: str, payee: str, amount: Decimal) -> tuple:
+    return (posted_at, normalize(account_name), normalize(payee), amount)
+
+
+def build_existing_match_signature(account_name: str, posted_at: datetime, amount: Decimal, payee: str, memo: str) -> str:
+    primary_descriptor = normalize(payee) or normalize(memo)
+    payload = "|".join(
+        [
+            posted_at.strftime("%Y-%m-%d"),
+            f"{amount:.2f}",
+            primary_descriptor,
         ]
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -150,15 +165,26 @@ def existing_occurrence_count(
     memo: str,
 ) -> int:
     rows = db.scalars(
-        select(Transaction.id).where(
-            Transaction.source_account_label == account_name,
+        select(Transaction)
+        .options(joinedload(Transaction.account))
+        .where(
             Transaction.posted_at == posted_at,
             Transaction.amount == amount,
-            Transaction.payee == payee,
-            Transaction.memo == memo,
         )
     ).all()
-    return len(rows)
+    target_signature = build_existing_match_signature(account_name, posted_at, amount, payee, memo)
+    return sum(
+        1
+        for row in rows
+        if build_existing_match_signature(
+            row.account.name if row.account is not None else row.source_account_label,
+            row.posted_at,
+            Decimal(str(row.amount)),
+            row.payee,
+            row.memo,
+        )
+        == target_signature
+    )
 
 
 def transaction_to_dict(item: ParsedUploadTransaction) -> dict:

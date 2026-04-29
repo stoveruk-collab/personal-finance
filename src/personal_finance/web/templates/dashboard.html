@@ -124,4 +124,20 @@
   <p class="muted">No transactions have been imported for {{ current_month_label }} yet.</p>
   {% endif %}
 </section>
+
+{% if current_report.business_expense.charges or current_report.business_expense.reimbursements %}
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h3>{{ current_month_label }} Business Expense Receivable</h3>
+      <p class="muted">Out-of-pocket employer-reimbursable spend shown net of reimbursements received this month.</p>
+    </div>
+  </div>
+  <div class="stats-grid report-stats">
+    <article class="stat-card solid"><span class="label">Charges</span><span class="value">{{ format_gbp(current_report.business_expense.charges) }}</span></article>
+    <article class="stat-card solid"><span class="label">Reimbursements</span><span class="value">{{ format_gbp(current_report.business_expense.reimbursements) }}</span></article>
+    <article class="stat-card solid"><span class="label">Net Receivable</span><span class="value">{{ format_gbp(current_report.business_expense.net_receivable) }}</span></article>
+  </div>
+</section>
+{% endif %}
 {% endblock %}

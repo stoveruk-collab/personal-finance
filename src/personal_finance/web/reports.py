@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from .models import BudgetSetting, HistoricalReport, Transaction, YearCategoryAggregate, YearClose
 
+BUSINESS_EXPENSE_CATEGORY = "Business Expense"
+
 
 def format_gbp(value: Decimal) -> str:
     sign = "-" if value < 0 else ""
@@ -63,6 +65,8 @@ def monthly_report_data(db: Session, year: int, month: int) -> dict:
     expense_totals: dict[str, Decimal] = defaultdict(Decimal)
     detail_rows: dict[str, list[Transaction]] = defaultdict(list)
     transfers_excluded = Decimal("0")
+    business_expense_charges = Decimal("0")
+    business_expense_reimbursements = Decimal("0")
 
     for tx in transactions:
         category_name = tx.category.name if tx.category else "Uncategorised"
@@ -70,6 +74,12 @@ def monthly_report_data(db: Session, year: int, month: int) -> dict:
         amount = Decimal(str(tx.amount))
         if category_name == "Transfer":
             transfers_excluded += abs(amount)
+            continue
+        if category_name == BUSINESS_EXPENSE_CATEGORY:
+            if amount < 0:
+                business_expense_charges += -amount
+            elif amount > 0:
+                business_expense_reimbursements += amount
             continue
         if amount > 0:
             income_totals[category_name] += amount
@@ -107,6 +117,8 @@ def monthly_report_data(db: Session, year: int, month: int) -> dict:
     ]
     excluded_transfers = [tx for tx in transactions if (tx.category.name if tx.category else "Uncategorised") == "Transfer"]
     review_rows = [tx for tx in transactions if tx.review_note or tx.ai_guess_reason]
+    business_expense_net = business_expense_charges - business_expense_reimbursements
+    business_expense_transactions = detail_rows[BUSINESS_EXPENSE_CATEGORY]
 
     return {
         "title_month": month_name(year, month),
@@ -123,6 +135,13 @@ def monthly_report_data(db: Session, year: int, month: int) -> dict:
         "transfers_excluded": transfers_excluded,
         "excluded_transfers": excluded_transfers,
         "review_rows": review_rows,
+        "business_expense": {
+            "category": BUSINESS_EXPENSE_CATEGORY,
+            "charges": business_expense_charges,
+            "reimbursements": business_expense_reimbursements,
+            "net_receivable": business_expense_net,
+            "transactions": business_expense_transactions,
+        },
     }
 
 
@@ -144,6 +163,8 @@ def annual_report_data(db: Session, year: int) -> dict:
     category_month_actuals: dict[str, dict[int, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
     month_expense_totals: dict[int, Decimal] = defaultdict(Decimal)
     month_income_totals: dict[int, Decimal] = defaultdict(Decimal)
+    month_business_expense_charges: dict[int, Decimal] = defaultdict(Decimal)
+    month_business_expense_reimbursements: dict[int, Decimal] = defaultdict(Decimal)
 
     for tx in transactions:
         category_name = tx.category.name if tx.category else "Uncategorised"
@@ -151,6 +172,12 @@ def annual_report_data(db: Session, year: int) -> dict:
             continue
         amount = Decimal(str(tx.amount))
         month = tx.posted_at.month
+        if category_name == BUSINESS_EXPENSE_CATEGORY:
+            if amount < 0:
+                month_business_expense_charges[month] += -amount
+            elif amount > 0:
+                month_business_expense_reimbursements[month] += amount
+            continue
         if amount > 0:
             month_income_totals[month] += amount
         else:
@@ -161,7 +188,7 @@ def annual_report_data(db: Session, year: int) -> dict:
     months_present = sorted({month for month in {*month_income_totals.keys(), *month_expense_totals.keys()} if month_income_totals.get(month, Decimal("0")) or month_expense_totals.get(month, Decimal("0"))})
 
     annual_rows: list[dict] = []
-    category_names = sorted(set(budget_by_category) | set(category_month_actuals))
+    category_names = sorted((set(budget_by_category) | set(category_month_actuals)) - {BUSINESS_EXPENSE_CATEGORY})
     for category_name in category_names:
         monthly_budget = budget_by_category.get(category_name, Decimal("0"))
         month_cells = []
@@ -195,6 +222,8 @@ def annual_report_data(db: Session, year: int) -> dict:
         budget_total = sum((row["months"][index]["budget"] for row in annual_rows for index, cell in enumerate(row["months"]) if cell["month"] == month), Decimal("0"))
         expenses = month_expense_totals.get(month, Decimal("0"))
         income = month_income_totals.get(month, Decimal("0"))
+        business_expense_charges = month_business_expense_charges.get(month, Decimal("0"))
+        business_expense_reimbursements = month_business_expense_reimbursements.get(month, Decimal("0"))
         month_summaries.append(
             {
                 "month": month,
@@ -204,12 +233,17 @@ def annual_report_data(db: Session, year: int) -> dict:
                 "budget": budget_total,
                 "variance": budget_total - expenses,
                 "net": income - expenses,
+                "business_expense_charges": business_expense_charges,
+                "business_expense_reimbursements": business_expense_reimbursements,
+                "business_expense_net_receivable": business_expense_charges - business_expense_reimbursements,
             }
         )
 
     total_income = sum((row["income"] for row in month_summaries), Decimal("0"))
     total_expenses = sum((row["expenses"] for row in month_summaries), Decimal("0"))
     total_budget = sum((row["budget"] for row in month_summaries), Decimal("0"))
+    total_business_expense_charges = sum((row["business_expense_charges"] for row in month_summaries), Decimal("0"))
+    total_business_expense_reimbursements = sum((row["business_expense_reimbursements"] for row in month_summaries), Decimal("0"))
 
     return {
         "year": year,
@@ -220,6 +254,12 @@ def annual_report_data(db: Session, year: int) -> dict:
         "total_budget": total_budget,
         "budget_variance": total_budget - total_expenses,
         "net_surplus": total_income - total_expenses,
+        "business_expense": {
+            "category": BUSINESS_EXPENSE_CATEGORY,
+            "charges": total_business_expense_charges,
+            "reimbursements": total_business_expense_reimbursements,
+            "net_receivable": total_business_expense_charges - total_business_expense_reimbursements,
+        },
     }
 
 

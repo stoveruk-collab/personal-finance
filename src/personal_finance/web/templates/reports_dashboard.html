@@ -46,6 +46,7 @@
     <article class="stat-card solid"><span class="label">Budget</span><span class="value">{{ format_gbp(report.total_budget) }}</span></article>
     <article class="stat-card solid"><span class="label">Variance</span><span class="value">{{ format_gbp(report.budget_variance) }}</span></article>
     <article class="stat-card solid"><span class="label">Net Surplus</span><span class="value">{{ format_gbp(report.net_surplus) }}</span></article>
+    <article class="stat-card solid"><span class="label">Business Expense Receivable</span><span class="value">{{ format_gbp(report.business_expense.net_receivable) }}</span></article>
   </div>
 </section>
 
@@ -84,6 +85,28 @@
     </tbody>
   </table>
 </section>
+
+{% if report.business_expense.charges or report.business_expense.reimbursements %}
+<section class="panel">
+  <h3>Business Expense Receivable</h3>
+  <table class="table comparison-table">
+    <tbody>
+      <tr>
+        <td>Charges</td>
+        <td class="amount">{{ format_gbp(report.business_expense.charges) }}</td>
+      </tr>
+      <tr>
+        <td>Reimbursements</td>
+        <td class="amount">{{ format_gbp(report.business_expense.reimbursements) }}</td>
+      </tr>
+      <tr class="total-row">
+        <td>Net Receivable</td>
+        <td class="amount">{{ format_gbp(report.business_expense.net_receivable) }}</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+{% endif %}
 
 <section class="panel">
   <h3>Statement Summary</h3>
@@ -161,6 +184,27 @@
   <p class="muted">No expense activity posted in this month.</p>
   {% endfor %}
 </section>
+
+{% if report.business_expense.transactions %}
+<section class="panel">
+  <h3>Business Expense Receivable Detail</h3>
+  <table class="table">
+    <thead><tr><th>Date</th><th>Account</th><th>Payee</th><th>Memo</th><th class="amount">Charge</th><th class="amount">Reimbursement</th></tr></thead>
+    <tbody>
+      {% for tx in report.business_expense.transactions %}
+      <tr>
+        <td>{{ tx.posted_at.strftime("%d %b %Y") }}</td>
+        <td>{{ tx.account.name }}</td>
+        <td>{{ tx.payee }}</td>
+        <td>{{ tx.memo or " " }}</td>
+        <td class="amount">{{ format_gbp(-tx.amount) if tx.amount < 0 else " " }}</td>
+        <td class="amount">{{ format_gbp(tx.amount) if tx.amount > 0 else " " }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
 {% else %}
 <section class="panel">
   <div class="panel-head">
@@ -175,6 +219,7 @@
     <article class="stat-card solid"><span class="label">Budget</span><span class="value">{{ format_gbp(report.total_budget) }}</span></article>
     <article class="stat-card solid"><span class="label">Variance</span><span class="value">{{ format_gbp(report.budget_variance) }}</span></article>
     <article class="stat-card solid"><span class="label">Net Surplus</span><span class="value">{{ format_gbp(report.net_surplus) }}</span></article>
+    <article class="stat-card solid"><span class="label">Business Expense Receivable</span><span class="value">{{ format_gbp(report.business_expense.net_receivable) }}</span></article>
   </div>
 </section>
 
@@ -240,5 +285,32 @@
     </table>
   </div>
 </section>
+
+{% if report.business_expense.charges or report.business_expense.reimbursements %}
+<section class="panel">
+  <h3>Business Expense Receivable</h3>
+  <table class="table">
+    <thead>
+      <tr><th>Month</th><th class="amount">Charges</th><th class="amount">Reimbursements</th><th class="amount">Net Receivable</th></tr>
+    </thead>
+    <tbody>
+      {% for month in report.months %}
+      <tr>
+        <td>{{ month.label }}</td>
+        <td class="amount">{{ format_gbp(month.business_expense_charges) }}</td>
+        <td class="amount">{{ format_gbp(month.business_expense_reimbursements) }}</td>
+        <td class="amount">{{ format_gbp(month.business_expense_net_receivable) }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="total-row">
+        <td>Year Total</td>
+        <td class="amount">{{ format_gbp(report.business_expense.charges) }}</td>
+        <td class="amount">{{ format_gbp(report.business_expense.reimbursements) }}</td>
+        <td class="amount">{{ format_gbp(report.business_expense.net_receivable) }}</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+{% endif %}
 {% endif %}
 {% endblock %}
