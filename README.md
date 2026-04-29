@@ -121,6 +121,7 @@ Primary deployment helper:
 Deployment guide:
 
 - `docs/gcp-cloudrun.md`
+- `docs/github-account.md`
 - `docs/runbook.md`
 
 Container build:
