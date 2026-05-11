@@ -93,30 +93,52 @@
       </div>
     </div>
     {% for row in chart_rows %}
-    <div class="watch-row">
-      <div class="watch-head">
-        <span class="watch-category">{{ row.category }}</span>
-        <span class="watch-values">
-          <span>{{ format_gbp(row.actual) }}</span>
-          <span class="muted-small">budget {{ format_gbp(row.budget) }}</span>
-          {% if row.budget > 0 %}
-          <span class="muted-small {% if row.is_over_budget %}over-budget-note{% endif %}">{{ '%.0f'|format(row.percent_of_budget) }}% of budget</span>
-          {% endif %}
-        </span>
-      </div>
-      <div class="watch-bars">
-        <div class="watch-bar-track">
-          <div class="watch-bar budget-bar" style="width: {{ '%.2f'|format(row.budget_width) }}%"></div>
+    <details class="watch-row watch-row-expandable">
+      <summary class="watch-summary">
+        <div class="watch-head">
+          <span class="watch-category">{{ row.category }}</span>
+          <span class="watch-values">
+            <span>{{ format_gbp(row.actual) }}</span>
+            <span class="muted-small">budget {{ format_gbp(row.budget) }}</span>
+            {% if row.budget > 0 %}
+            <span class="muted-small {% if row.is_over_budget %}over-budget-note{% endif %}">{{ '%.0f'|format(row.percent_of_budget) }}% of budget</span>
+            {% endif %}
+          </span>
         </div>
-        <div class="watch-bar-track">
-          <div class="watch-bar actual-bar {% if row.is_over_budget %}actual-bar-over{% endif %}" style="width: {{ '%.2f'|format(row.actual_width) }}%"></div>
+        <div class="watch-bars">
+          <div class="watch-bar-track">
+            <div class="watch-bar budget-bar" style="width: {{ '%.2f'|format(row.budget_width) }}%"></div>
+          </div>
+          <div class="watch-bar-track">
+            <div class="watch-bar actual-bar {% if row.is_over_budget %}actual-bar-over{% endif %}" style="width: {{ '%.2f'|format(row.actual_width) }}%"></div>
+          </div>
         </div>
+        <div class="watch-foot">
+          <span class="muted-small">{{ row.transactions|length }} transaction{{ "" if row.transactions|length == 1 else "s" }}</span>
+          <span class="watch-variance {% if row.variance < 0 %}over-budget{% endif %}">{{ format_gbp(row.variance) }}</span>
+        </div>
+      </summary>
+      <div class="watch-detail table-scroll">
+        {% if row.transactions %}
+        <table class="table watch-detail-table">
+          <thead><tr><th>Date</th><th>Account</th><th>Payee</th><th>Memo</th><th class="amount">Amount</th></tr></thead>
+          <tbody>
+            {% for tx in row.transactions %}
+            <tr>
+              <td>{{ tx.posted_at.strftime("%d %b %Y") }}</td>
+              <td>{{ tx.account.name }}</td>
+              <td>{{ tx.payee }}</td>
+              <td>{{ tx.memo or " " }}</td>
+              <td class="amount">{{ format_gbp(-tx.amount) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="muted watch-empty">No transactions in this category for {{ current_month_label }}.</p>
+        {% endif %}
       </div>
-      <div class="watch-foot">
-        <span class="muted-small">Variance</span>
-        <span class="watch-variance {% if row.variance < 0 %}over-budget{% endif %}">{{ format_gbp(row.variance) }}</span>
-      </div>
-    </div>
+    </details>
     {% endfor %}
   </div>
 

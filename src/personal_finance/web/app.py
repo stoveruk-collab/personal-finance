@@ -118,6 +118,9 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depe
         if budget.category is not None
     }
     actual_lookup = {section["category"]: section["amount"] for section in current_report["expense_sections"]}
+    transactions_by_category = {
+        section["category"]: section["transactions"] for section in current_report["expense_sections"]
+    }
     discretionary_exclusions = {"Rent", "Utilities & Taxes", "Business Expense"}
     watched_categories = [
         "Groceries & Supplies",
@@ -143,7 +146,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depe
         }
     )
 
-    def build_chart_row(category_name: str, actual: Decimal, budget: Decimal) -> dict:
+    def build_chart_row(category_name: str, actual: Decimal, budget: Decimal, transactions: list[Transaction] | None = None) -> dict:
         scale_value = max(actual, budget, Decimal("1"))
         budget_width = (budget / scale_value) * Decimal("100") if budget > 0 else Decimal("0")
         actual_width = (actual / scale_value) * Decimal("100") if actual > 0 else Decimal("0")
@@ -157,6 +160,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depe
             "actual_width": float(actual_width),
             "percent_of_budget": float(percent_of_budget),
             "is_over_budget": actual > budget if budget > 0 else actual > 0,
+            "transactions": transactions or [],
         }
 
     overall_chart_row = build_chart_row(
@@ -181,7 +185,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: User = Depe
         budget = budget_lookup.get(category_name, Decimal("0"))
         if actual == 0 and budget == 0:
             continue
-        chart_rows.append(build_chart_row(category_name, actual, budget))
+        chart_rows.append(build_chart_row(category_name, actual, budget, transactions_by_category.get(category_name, [])))
     auth_warning = None
     if not settings.allow_dev_login and not (settings.google_client_id and settings.google_client_secret):
         auth_warning = (
