@@ -4,19 +4,26 @@ import unittest
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
 from personal_finance.web.db import Base
 from personal_finance.web.models import Account, Category, ImportBatch, Transaction
-from personal_finance.web.parsing import build_dedupe_signature, build_fingerprint, dedupe_sort_key, existing_occurrence_count
+from personal_finance.web.parsing import (
+    ParsedUploadTransaction,
+    build_dedupe_signature,
+    build_fingerprint,
+    dedupe_sort_key,
+    existing_occurrence_count,
+    existing_occurrence_counts,
+)
 
 
 class ImportPreviewDeduplicationTest(unittest.TestCase):
     def setUp(self):
-        engine = create_engine("sqlite:///:memory:", future=True)
-        Base.metadata.create_all(bind=engine)
-        self.db = Session(bind=engine, future=True)
+        self.engine = create_engine("sqlite:///:memory:", future=True)
+        Base.metadata.create_all(bind=self.engine)
+        self.db = Session(bind=self.engine, future=True)
 
         self.account = Account(name="Checking", slug="checking")
         self.category = Category(name="Groceries")
@@ -211,6 +218,58 @@ class ImportPreviewDeduplicationTest(unittest.TestCase):
         )
 
         self.assertLess(older, newer)
+
+    def test_existing_occurrence_counts_uses_one_query_for_the_upload(self):
+        self.db.add(
+            Transaction(
+                fingerprint=build_fingerprint(self.signature, 1),
+                year=self.posted_at.year,
+                posted_at=self.posted_at,
+                amount=self.amount,
+                payee=self.payee,
+                memo=self.memo,
+                raw_text=self.payee,
+                source_file="existing.qfx",
+                source_account_label=self.account_name,
+                matched_by="",
+                mapping_source="mapping",
+                review_note="",
+                ai_guess_reason="",
+                ai_guess_model="",
+                account_id=self.account.id,
+                category_id=self.category.id,
+                import_batch_id=self.batch.id,
+            )
+        )
+        self.db.commit()
+        upload_item = ParsedUploadTransaction(
+            posted_at=self.posted_at,
+            amount=self.amount,
+            payee=self.payee,
+            memo=self.memo,
+            raw_text=self.payee,
+            account_name=self.account_name,
+            source_file="new.qfx",
+            matched_by="",
+            mapping_source="unmapped",
+            review_note="",
+            dedupe_signature=self.signature,
+            category_name=None,
+        )
+        selects = []
+
+        def count_selects(connection, cursor, statement, parameters, context, executemany):
+            if statement.lstrip().upper().startswith("SELECT"):
+                selects.append(statement)
+
+        event.listen(self.engine, "before_cursor_execute", count_selects)
+        try:
+            counts = existing_occurrence_counts(self.db, [upload_item, upload_item])
+        finally:
+            event.remove(self.engine, "before_cursor_execute", count_selects)
+
+        self.assertEqual(counts[self.signature], 1)
+        self.assertEqual(len(selects), 1)
 
 
 if __name__ == "__main__":

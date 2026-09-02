@@ -98,9 +98,15 @@
         setDeterminateProgress(percent, label, note);
       });
 
+      request.upload.addEventListener("load", () => {
+        setIndeterminateProgress(
+          "Building preview...",
+          "Deduplicating transactions and generating time-limited category suggestions."
+        );
+      });
+
       request.addEventListener("load", () => {
         if (request.status >= 200 && request.status < 300 && request.response) {
-          setIndeterminateProgress("Building preview...", "Upload finished. Deduplicating and categorizing transactions.");
           document.open();
           document.write(request.response.documentElement.outerHTML);
           document.close();

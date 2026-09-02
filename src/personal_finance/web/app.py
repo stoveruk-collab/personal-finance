@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import time
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -21,14 +23,15 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .db import Base, SessionLocal, engine, get_db
 from .models import Account, BudgetSetting, Category, HistoricalReport, ImportBatch, ImportPreview, MappingRule, Transaction, User
-from .parsing import build_fingerprint, dedupe_sort_key, existing_occurrence_count, parse_uploaded_file, transaction_to_dict
+from .parsing import build_fingerprint, dedupe_sort_key, existing_occurrence_counts, parse_uploaded_file, transaction_to_dict
 from .reports import annual_report_data, available_years, budget_settings, close_year, format_gbp, month_name, month_options, monthly_report_data
 from .seed import seed_defaults
-from .services.categorizer import guess_category
+from .services.categorizer import CategoryGuess, guess_categories
 from .settings import load_web_settings
 
 
 settings = load_web_settings()
+logger = logging.getLogger(__name__)
 app = FastAPI(title=settings.app_name)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
@@ -321,10 +324,12 @@ def import_form(request: Request, user: User = Depends(require_user)):
 
 @app.post("/imports/preview", response_class=HTMLResponse)
 async def import_preview(request: Request, files: list[UploadFile] = File(...), db: Session = Depends(get_db), user: User = Depends(require_user)):
+    preview_started_at = time.perf_counter()
     categories = db.scalars(select(Category).where(Category.is_active.is_(True)).order_by(Category.name)).all()
     rows: list[dict] = []
     duplicate_count = 0
     seen_signature_counts: dict[str, int] = {}
+    parsed_items = []
 
     upload_dir = settings.upload_root / uuid.uuid4().hex
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -332,36 +337,41 @@ async def import_preview(request: Request, files: list[UploadFile] = File(...), 
     for uploaded in files:
         target = upload_dir / uploaded.filename
         target.write_bytes(await uploaded.read())
-        for item in parse_uploaded_file(target, db):
-            occurrence_index = seen_signature_counts.get(item.dedupe_signature, 0) + 1
-            seen_signature_counts[item.dedupe_signature] = occurrence_index
-            existing_count = existing_occurrence_count(
-                db,
-                account_name=item.account_name,
-                posted_at=item.posted_at,
-                amount=item.amount,
-                payee=item.payee,
-                memo=item.memo,
-            )
-            if occurrence_index <= existing_count:
-                duplicate_count += 1
-                continue
-            chosen_category = item.category_name
-            ai_reason = ""
-            ai_model = ""
-            if chosen_category is None:
-                chosen_category, ai_reason, ai_model = guess_category(db, item.raw_text)
-            rows.append(
-                {
-                    **transaction_to_dict(item),
-                    "selected_category_name": chosen_category or "",
-                    "ai_guess_reason": ai_reason,
-                    "ai_guess_model": ai_model,
-                    "default_rule_pattern": item.payee or item.raw_text,
-                    "occurrence_index": occurrence_index,
-                    "fingerprint": build_fingerprint(item.dedupe_signature, occurrence_index),
-                }
-            )
+        parsed_items.extend(parse_uploaded_file(target, db))
+
+    existing_counts = existing_occurrence_counts(db, parsed_items)
+    preview_items = []
+    for item in parsed_items:
+        occurrence_index = seen_signature_counts.get(item.dedupe_signature, 0) + 1
+        seen_signature_counts[item.dedupe_signature] = occurrence_index
+        if occurrence_index <= existing_counts.get(item.dedupe_signature, 0):
+            duplicate_count += 1
+            continue
+        preview_items.append((item, occurrence_index))
+
+    unmapped_items = [item for item, _ in preview_items if item.category_name is None]
+    ai_started_at = time.perf_counter()
+    ai_guesses = await guess_categories(
+        [category.name for category in categories],
+        [item.raw_text for item in unmapped_items],
+    )
+    ai_elapsed = time.perf_counter() - ai_started_at
+    ai_guess_iterator = iter(ai_guesses)
+
+    for item, occurrence_index in preview_items:
+        guess = next(ai_guess_iterator) if item.category_name is None else CategoryGuess(None, "", "")
+        chosen_category = item.category_name or guess.category_name
+        rows.append(
+            {
+                **transaction_to_dict(item),
+                "selected_category_name": chosen_category or "",
+                "ai_guess_reason": guess.reason,
+                "ai_guess_model": guess.model,
+                "default_rule_pattern": item.payee or item.raw_text,
+                "occurrence_index": occurrence_index,
+                "fingerprint": build_fingerprint(item.dedupe_signature, occurrence_index),
+            }
+        )
 
     rows.sort(
         key=lambda row: dedupe_sort_key(
@@ -373,6 +383,16 @@ async def import_preview(request: Request, files: list[UploadFile] = File(...), 
     )
 
     preview_id = store_preview(db, {"rows": rows, "uploaded_files": [file.filename for file in files], "upload_dir": str(upload_dir)})
+    logger.info(
+        "Import preview built: files=%s parsed=%s duplicates=%s rows=%s unmapped=%s ai_seconds=%.3f total_seconds=%.3f",
+        len(files),
+        len(parsed_items),
+        duplicate_count,
+        len(rows),
+        len(unmapped_items),
+        ai_elapsed,
+        time.perf_counter() - preview_started_at,
+    )
     return templates.TemplateResponse(
         request=request,
         name="import_preview.html",

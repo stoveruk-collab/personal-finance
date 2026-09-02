@@ -3,6 +3,7 @@ from __future__ import annotations
 import fnmatch
 import hashlib
 import re
+from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -185,6 +186,45 @@ def existing_occurrence_count(
         )
         == target_signature
     )
+
+
+def existing_occurrence_counts(
+    db: Session,
+    items: Iterable[ParsedUploadTransaction],
+) -> dict[str, int]:
+    """Return existing ledger counts for an upload with one database query."""
+    upload_items = list(items)
+    if not upload_items:
+        return {}
+
+    posted_dates = {item.posted_at for item in upload_items}
+    rows = db.scalars(
+        select(Transaction)
+        .options(joinedload(Transaction.account))
+        .where(Transaction.posted_at.in_(posted_dates))
+    ).all()
+    ledger_counts = Counter(
+        build_existing_match_signature(
+            row.account.name if row.account is not None else row.source_account_label,
+            row.posted_at,
+            Decimal(str(row.amount)),
+            row.payee,
+            row.memo,
+        )
+        for row in rows
+    )
+    return {
+        item.dedupe_signature: ledger_counts[
+            build_existing_match_signature(
+                item.account_name,
+                item.posted_at,
+                item.amount,
+                item.payee,
+                item.memo,
+            )
+        ]
+        for item in upload_items
+    }
 
 
 def transaction_to_dict(item: ParsedUploadTransaction) -> dict:
