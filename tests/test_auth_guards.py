@@ -13,6 +13,7 @@ PROTECTED_GET_ROUTES = [
     "/reports/monthly/2026/4",
     "/reports/history/1",
     "/ledger",
+    "/ledger/export",
     "/accounts/1/ledger",
     "/categories",
     "/mappings",

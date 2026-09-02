@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import json
 import logging
 import os
@@ -14,7 +16,7 @@ from zoneinfo import ZoneInfo
 import uvicorn
 from authlib.integrations.starlette_client import OAuth
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_, select
@@ -509,15 +511,11 @@ def historical_report(report_id: int, request: Request, db: Session = Depends(ge
     return HTMLResponse(report.html)
 
 
-@app.get("/ledger", response_class=HTMLResponse)
-def ledger(
-    request: Request,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_user),
-    account_id: Optional[str] = Query(default=None),
-    month: Optional[str] = Query(default=None),
-    search: Optional[str] = Query(default=None),
-):
+def parse_ledger_filters(
+    account_id: Optional[str],
+    month: Optional[str],
+    search: Optional[str],
+) -> tuple[Optional[int], Optional[datetime], Optional[datetime], str]:
     parsed_account_id: Optional[int] = None
     if account_id not in (None, ""):
         try:
@@ -536,9 +534,22 @@ def ledger(
         else:
             next_month_start = datetime(month_start.year, month_start.month + 1, 1)
     search_text = (search or "").strip()
-    query = select(Transaction).options(joinedload(Transaction.account), joinedload(Transaction.category)).order_by(Transaction.posted_at.desc(), Transaction.id.desc())
-    if parsed_account_id is not None:
-        query = query.where(Transaction.account_id == parsed_account_id)
+    return parsed_account_id, month_start, next_month_start, search_text
+
+
+def ledger_transaction_query(
+    account_id: Optional[int],
+    month_start: Optional[datetime],
+    next_month_start: Optional[datetime],
+    search_text: str,
+):
+    query = (
+        select(Transaction)
+        .options(joinedload(Transaction.account), joinedload(Transaction.category))
+        .order_by(Transaction.posted_at.desc(), Transaction.id.desc())
+    )
+    if account_id is not None:
+        query = query.where(Transaction.account_id == account_id)
     if month_start is not None and next_month_start is not None:
         query = query.where(Transaction.posted_at >= month_start, Transaction.posted_at < next_month_start)
     if search_text:
@@ -550,6 +561,22 @@ def ledger(
                 Transaction.raw_text.ilike(pattern),
             )
         )
+    return query
+
+
+@app.get("/ledger", response_class=HTMLResponse)
+def ledger(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+    account_id: Optional[str] = Query(default=None),
+    month: Optional[str] = Query(default=None),
+    search: Optional[str] = Query(default=None),
+):
+    parsed_account_id, month_start, next_month_start, search_text = parse_ledger_filters(
+        account_id, month, search
+    )
+    query = ledger_transaction_query(parsed_account_id, month_start, next_month_start, search_text)
     transactions = db.scalars(query.limit(500)).all()
     accounts = db.scalars(select(Account).order_by(Account.name)).all()
     categories = db.scalars(select(Category).where(Category.is_active.is_(True)).order_by(Category.name)).all()
@@ -581,6 +608,44 @@ def ledger(
             "search": search_text,
             "format_gbp": format_gbp,
         },
+    )
+
+
+@app.get("/ledger/export")
+def export_ledger(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+    account_id: Optional[str] = Query(default=None),
+    month: Optional[str] = Query(default=None),
+    search: Optional[str] = Query(default=None),
+):
+    parsed_account_id, month_start, next_month_start, search_text = parse_ledger_filters(
+        account_id, month, search
+    )
+    transactions = db.scalars(
+        ledger_transaction_query(parsed_account_id, month_start, next_month_start, search_text)
+    ).all()
+
+    csv_file = io.StringIO(newline="")
+    writer = csv.writer(csv_file)
+    writer.writerow(["Date", "Account", "Payee", "Memo", "Category", "Amount"])
+    for transaction in transactions:
+        writer.writerow(
+            [
+                transaction.posted_at.strftime("%Y-%m-%d"),
+                transaction.account.name,
+                transaction.payee,
+                transaction.memo,
+                transaction.category.name if transaction.category else "Uncategorised",
+                f"{transaction.amount:.2f}",
+            ]
+        )
+
+    filename = f"ledger-transactions-{month}.csv" if month else "ledger-transactions.csv"
+    return Response(
+        content=csv_file.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -627,7 +692,7 @@ async def update_ledger_transaction(
 
 @app.get("/accounts/{account_id}/ledger", response_class=HTMLResponse)
 def account_ledger(account_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(require_user)):
-    return ledger(request=request, db=db, user=user, account_id=account_id)
+    return ledger(request=request, db=db, user=user, account_id=str(account_id), month=None, search=None)
 
 
 @app.get("/categories", response_class=HTMLResponse)
