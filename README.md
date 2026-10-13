@@ -24,6 +24,10 @@ The project is designed for people who want:
 
 ## Architecture
 
+![Personal Finance Ledger — Google Cloud Run Architecture](docs/personal_finance_bento.svg)
+
+Architecture diagrams (`docs/personal_finance_bento.svg`, `docs/personal_finance_bento.dendrite`, and `docs/personal_finance_bento.drawio`) are included in `docs/`.
+
 The application has three main layers:
 
 1. `FastAPI` server-rendered web app

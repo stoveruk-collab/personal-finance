@@ -1,0 +1,218 @@
+theme: "gcp-pro"
+renderOrder: nodes-first
+direction: right
+spacing: 28
+
+const GcpBlue = "#1a73e8"
+const GcpGreen = "#1e8e3e"
+const EmeraldTeal = "#0d9488"
+const DarkSlate = "#202124"
+const SubText = "#5f6368"
+const CardBorder = "#dadce0"
+const BusStroke = "#334155"
+const SurfaceWhite = "#ffffff"
+
+Style @Ghost {
+  fill: transparent, strokeWidth: 0, fontColor: transparent, padding: 0
+}
+Style @ArchitectureRoot {
+  fill: "#f8fafd", strokeColor: "#c2d7f5", strokeWidth: 1.5, borderRadius: 16,
+  padding: 24, gap: 20, fontColor: "#3c4043", fontSize: 22, labelWeight: bold,
+  icon: "GoogleCloud", iconSize: 26
+}
+Style @PerimeterZone {
+  fill: "#e8f0fe", strokeColor: "#8ab4f8", strokeWidth: 1.5, borderRadius: 12,
+  padding: 16, gap: 16, fontColor: $DarkSlate, fontSize: 15, labelWeight: bold
+}
+Style @ExecutionZone {
+  fill: "#fce8e6", strokeColor: "#f6aea9", strokeWidth: 1.5, borderRadius: 12,
+  padding: 16, gap: 16, fontColor: $DarkSlate, fontSize: 15, labelWeight: bold
+}
+Style @GovernanceZone {
+  fill: "#e6f4ea", strokeColor: "#81c995", strokeWidth: 1.5, borderRadius: 12,
+  padding: 16, gap: 16, fontColor: $DarkSlate, fontSize: 15, labelWeight: bold
+}
+Style @ResourceZone {
+  fill: "#fef7e0", strokeColor: "#fde293", strokeWidth: 1.5, borderRadius: 12,
+  padding: 16, gap: 18, fontColor: $DarkSlate, fontSize: 15, labelWeight: bold
+}
+Style @PeachSubGroup {
+  fill: "#f8d3c8", strokeColor: darken("#f8d3c8", 12), strokeWidth: 1, borderRadius: 10,
+  padding: 12, gap: 12, fontColor: $DarkSlate, fontSize: 13.5, labelWeight: bold
+}
+Style @ProductCard {
+  width: 184, height: 58,
+  fill: $SurfaceWhite, strokeColor: $CardBorder, strokeWidth: 1, borderRadius: 8,
+  fontColor: $DarkSlate, subFontColor: $SubText,
+  fontSize: 13.5, subFontSize: 11, labelWeight: bold,
+  textAlign: "left", textVAlign: "middle",
+  iconPosition: "left", iconSize: 26, padding: 10, shadow: true
+}
+Style @GatewayHubCard {
+  base: @ProductCard,
+  width: 210, height: 64, strokeColor: $GcpBlue, strokeWidth: 2,
+  fontSize: 14.5, subFontSize: 11.5, iconSize: 28, padding: 12
+}
+
+Zone @PersonalFinanceCloud {
+  title: "Google Cloud"
+  subtitle: "Personal Finance Ledger — personal-finance-wm-2026 (europe-west2)"
+  style: @ArchitectureRoot
+  layout: matrix
+  areas: [
+    "z1 z1 z1",
+    "z2 z3 z3",
+    "z4 z4 z4"
+  ]
+  sizes: ["1.05fr", "1.15fr", "1.15fr"]
+  gap: 24
+
+  Zone @Zone1_Perimeter {
+    area: "z1"
+    title: "1. User Access, OAuth Guard & Source Build"
+    subtitle: "Single-User Allowlist & Cloud Run Source Deploy"
+    style: @PerimeterZone
+    layout: row, gap: 22, align: center, justify: center
+
+    [owner_browser: "Account Owner" | "QIF / OFX / QFX Exports"] {
+      style: @ProductCard, icon: "User"
+    }
+    [google_oauth: "Google OAuth 2.0" | "ALLOWED_GOOGLE_EMAILS"] {
+      style: @ProductCard, icon: "IdentityPlatform",
+      description: "### Single-User OAuth Guard\nAuthenticates via `/auth/google` and enforces `ALLOWED_GOOGLE_EMAILS` allowlist."
+    }
+    [cloud_build: "Cloud Build" | "gcp-cloudrun-deploy.sh"] {
+      style: @ProductCard, icon: "CloudBuild"
+    }
+    [artifact_reg: "Artifact Registry" | "Python 3.11 Image"] {
+      style: @ProductCard, icon: "ArtifactRegistry"
+    }
+  }
+
+  Zone @Zone2_Security {
+    area: "z2"
+    title: "2. Secrets, IAM & External AI"
+    subtitle: "Runtime Injection & Categorizer Fallback"
+    style: @GovernanceZone
+    layout: column, gap: 16, align: center, justify: center
+
+    [run_sa: "Cloud Run IAM SA" | "personal-finance-run"] {
+      style: @ProductCard, icon: "IAM"
+    }
+    [secret_mgr: "Secret Manager" | "5 App & DB Secrets"] {
+      style: @ProductCard, icon: "SecretManager",
+      description: "### Mounted Secrets (`--set-secrets`)\n- `personal-finance-app-secret`\n- `personal-finance-google-client-id`\n- `personal-finance-google-client-secret`\n- `personal-finance-openai-key`\n- `personal-finance-db-password`"
+    }
+    [openai_api: "OpenAI API" | "gpt-4.1-mini Fallback"] {
+      style: @ProductCard, icon: "OpenAI",
+      description: "### AI Categorisation Fallback\nInvoked by `services/categorizer.py` only when no saved database mapping rule matches a transaction."
+    }
+  }
+
+  Zone @Zone3_CloudRun {
+    area: "z3"
+    title: "3. Cloud Run Application Runtime (europe-west2)"
+    subtitle: "FastAPI + Uvicorn Container (max-instances=1)"
+    style: @ExecutionZone
+    layout: row, gap: 28, align: center, justify: center
+
+    [fastapi_app: "Cloud Run: FastAPI" | "web/app.py (Port 8080)"] {
+      style: @GatewayHubCard, icon: "CloudRun", tag: "max-instances: 1", tagColor: "#1a73e8", tagFill: "#dbeafe",
+      description: "### FastAPI Server-Rendered Web App\nServes `/ledger`, `/accounts/<id>/ledger`, `/mappings`, `/budgets`, and interactive import review."
+    }
+
+    Zone @DomainServices {
+      title: "Domain Services (personal_finance.web)"
+      style: @PeachSubGroup, layout: column, gap: 12, align: center
+      [import_parser: "Import & Dedupe" | "web/parsing.py"] {
+        style: @ProductCard, icon: "FileText"
+      }
+      [categorizer_svc: "Rule & AI Categorizer" | "services/categorizer.py"] {
+        style: @ProductCard, icon: "Sparkles"
+      }
+      [reports_svc: "P&L & Budget Reports" | "web/reports.py"] {
+        style: @ProductCard, icon: "PieChart"
+      }
+    }
+  }
+
+  Zone @Zone4_Data {
+    area: "z4"
+    title: "4. Persistence & Disaster Recovery Foundation"
+    subtitle: "SQLAlchemy ORM, Cloud SQL PostgreSQL & Nightly Backups"
+    style: @ResourceZone
+    layout: row, gap: 22, align: center, justify: center
+
+    [sqlalchemy_orm: "SQLAlchemy Models" | "web/models.py"] {
+      style: @ProductCard, icon: "Code"
+    }
+    [cloud_sql_pg: "Cloud SQL Postgres" | "personal-finance-db"] {
+      style: @ProductCard, icon: "CloudSQL",
+      description: "### Cloud SQL for PostgreSQL (`personal-finance-db`)\n- **Database**: `personal_finance` (`pfadmin`)\n- **Socket**: `CLOUDSQL_CONNECTION_NAME`\n- **Tables**: Transactions, Accounts, Mappings, Monthly Budgets, Closed-Year Archives"
+    }
+    [sql_backups: "Automated Backups" | "03:00 Nightly (7 Days)"] {
+      style: @ProductCard, icon: "BackupAndDR"
+    }
+    [local_sqlite: "Local Dev SQLite" | ".data/personal_finance.db"] {
+      style: @ProductCard, icon: "Database"
+    }
+  }
+}
+
+[owner_browser] -> [google_oauth]: "Sign-In" { curve: "step",  targetAnchor: "left",  sourceAnchor: "right", 
+  sourceAnchor: "right", targetAnchor: "left", color: $GcpBlue, strokeWidth: 2, curve: "step",
+  sequenceBadge: "1", badgeFill: $GcpBlue, badgeFontColor: $SurfaceWhite
+}
+[google_oauth] -> [fastapi_app]: "OAuth Session" { curve: "step",  targetAnchor: "top",  sourceAnchor: "bottom", 
+  sourceAnchor: "bottom", targetAnchor: "top", color: $GcpBlue, strokeWidth: 2, curve: "step",
+  sequenceBadge: "2", badgeFill: $GcpBlue, badgeFontColor: $SurfaceWhite
+}
+[cloud_build] -> [artifact_reg]: "Build Image" { curve: "step",  targetAnchor: "left",  sourceAnchor: "right", 
+  sourceAnchor: "right", targetAnchor: "left", color: $BusStroke, strokeWidth: 2, curve: "step"
+}
+[artifact_reg] -> [fastapi_app]: "Deploy Rev" { curve: "step",  targetAnchor: "top",  sourceAnchor: "bottom", 
+  sourceAnchor: "bottom", targetAnchor: "top", color: $BusStroke, strokeWidth: 2, dashed: true, curve: "step"
+}
+[run_sa] -> [secret_mgr]: "Read Access" { curve: "step",  targetAnchor: "top",  sourceAnchor: "bottom", 
+  sourceAnchor: "bottom", targetAnchor: "top", color: $GcpGreen, strokeWidth: 2, curve: "step"
+}
+[secret_mgr] -> [fastapi_app]: "Env Secrets" { curve: "step",  targetAnchor: "left",  sourceAnchor: "right", 
+  sourceAnchor: "right", targetAnchor: "left", color: $GcpGreen, strokeWidth: 2, dashed: true, curve: "step"
+}
+[fastapi_app] -> [import_parser]: "Upload QIF/OFX" { curve: "step",  targetAnchor: "left",  sourceAnchor: "right", 
+  sourceAnchor: "right", targetAnchor: "left", color: $GcpBlue, strokeWidth: 2, curve: "step",
+  sequenceBadge: "3", badgeFill: $GcpBlue, badgeFontColor: $SurfaceWhite
+}
+[import_parser] -> [categorizer_svc]: "Dedupe Rows" { curve: "step",  targetAnchor: "top",  sourceAnchor: "bottom", 
+  sourceAnchor: "bottom", targetAnchor: "top", color: $GcpBlue, strokeWidth: 2, curve: "step",
+  sequenceBadge: "4", badgeFill: $GcpBlue, badgeFontColor: $SurfaceWhite
+}
+[categorizer_svc] <--> [openai_api]: "AI Fallback" { curve: "step",  targetAnchor: "right",  sourceAnchor: "left", 
+  sourceAnchor: "left", targetAnchor: "right", color: $EmeraldTeal, strokeWidth: 2, dashed: true, curve: "step",
+  sequenceBadge: "5", badgeFill: $EmeraldTeal, badgeFontColor: $SurfaceWhite
+}
+[categorizer_svc] -> [reports_svc]: "Reviewed Batch" { curve: "step",  targetAnchor: "top",  sourceAnchor: "bottom", 
+  sourceAnchor: "bottom", targetAnchor: "top", color: $GcpBlue, strokeWidth: 2, curve: "step"
+}
+[fastapi_app] -> [sqlalchemy_orm]: "Commit Ledger" { curve: "step",  targetAnchor: "top",  sourceAnchor: "bottom", 
+  sourceAnchor: "bottom", targetAnchor: "top", color: $GcpBlue, strokeWidth: 2, curve: "step",
+  sequenceBadge: "6", badgeFill: $GcpBlue, badgeFontColor: $SurfaceWhite
+}
+[sqlalchemy_orm] -> [cloud_sql_pg]: "Unix Socket" { curve: "step",  targetAnchor: "left",  sourceAnchor: "right", 
+  sourceAnchor: "right", targetAnchor: "left", color: $GcpGreen, strokeWidth: 2, curve: "step",
+  sequenceBadge: "7", badgeFill: $GcpGreen, badgeFontColor: $SurfaceWhite
+}
+[cloud_sql_pg] -> [sql_backups]: "03:00 Snapshot" { curve: "step",  targetAnchor: "left",  sourceAnchor: "right", 
+  sourceAnchor: "right", targetAnchor: "left", color: $GcpGreen, strokeWidth: 2, dashed: true, curve: "step"
+}
+
+animation "Transaction Import & AI Categorisation Flow" {
+  loop: false
+  step 1: [owner_browser] -> [google_oauth] { packet: "1. Google OAuth Sign-In", color: "#1a73e8", duration: "1.1s" }
+  step 2: [google_oauth] -> [fastapi_app] { packet: "2. Verify ALLOWED_GOOGLE_EMAILS", color: "#1a73e8", duration: "1.1s" }
+  step 3: [fastapi_app] -> [import_parser] { packet: "3. Upload .qif / .ofx / .qfx", color: "#1a73e8", duration: "1.2s" }
+  step 4: [import_parser] -> [categorizer_svc] { packet: "4. Parse & Deduplicate Rows", color: "#1a73e8", duration: "1.2s" }
+  step 5: [categorizer_svc] -> [openai_api] { packet: "5. OpenAI Fallback (Unmatched)", color: "#0d9488", duration: "1.2s" }
+  step 6: [fastapi_app] -> [sqlalchemy_orm] { packet: "6. User Reviews & Commits Batch", color: "#1a73e8", duration: "1.2s" }
+  step 7: [sqlalchemy_orm] -> [cloud_sql_pg] { packet: "7. Persist to Cloud SQL Postgres", color: "#1e8e3e", duration: "1.2s" }
+}
